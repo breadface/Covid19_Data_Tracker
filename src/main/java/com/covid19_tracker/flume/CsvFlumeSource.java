@@ -1,19 +1,14 @@
 package com.covid19_tracker.flume;
 
-import org.apache.flume.Context;
-import org.apache.flume.Event;
-import org.apache.flume.EventDrivenSource;
-import org.apache.flume.channel.ChannelProcessor;
+import org.apache.flume.*;
 import org.apache.flume.conf.Configurable;
 import org.apache.flume.conf.ConfigurationException;
+import org.apache.flume.event.SimpleEvent;
 import org.apache.flume.source.AbstractSource;
-import org.apache.flume.source.DefaultSourceFactory;
-import org.apache.flume.source.http.HTTPSource;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -41,8 +36,7 @@ public class CsvFlumeSource extends AbstractSource implements EventDrivenSource,
         super.stop();
     }
 
-    @Override
-    public Status process() throws EventDeliveryException {
+    public Sink.Status process() throws EventDeliveryException {
         try {
             // Read data from the CSV file and send it to the Flume channel
             BufferedReader reader = new BufferedReader(new FileReader(new File(csvFilePath)));
@@ -57,9 +51,9 @@ public class CsvFlumeSource extends AbstractSource implements EventDrivenSource,
                 getChannelProcessor().processEvent(event);
             }
 
-            return Status.READY;
+            return Sink.Status.READY;
         } catch (Exception e) {
-            return Status.BACKOFF;
+            return Sink.Status.BACKOFF;
         }
     }
 }

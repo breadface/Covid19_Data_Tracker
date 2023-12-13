@@ -14,29 +14,30 @@ import java.util.Arrays;
 public class HiveConnector {
     public static void main(String[] args) {
         SparkConf sparkConf = new SparkConf().setAppName("SparkHiveIntegrationExample");
-        JavaSparkContext sparkContext = new JavaSparkContext(sparkConf);
+        try (JavaSparkContext sparkContext = new JavaSparkContext(sparkConf)) {
 
-        // Replace "your/input/path" with the actual path to your historical data
-        String inputPath = "your/input/path";
+            // Replace "your/input/path" with the actual path to your historical data
+            String inputPath = "your/input/path";
 
-        // Create a HiveContext
-        HiveContext hiveContext = new HiveContext(sparkContext.sc());
+            // Create a HiveContext
+            HiveContext hiveContext = new HiveContext(sparkContext.sc());
 
-        // Read historical data from text file
-        JavaRDD<String> rawData = sparkContext.textFile(inputPath);
+            // Read historical data from text file
+            JavaRDD<String> rawData = sparkContext.textFile(inputPath);
 
-        // Process and clean the data (Example: Split each line into fields)
-        JavaRDD<String[]> cleanedData = rawData.map(line -> line.split(","));
+            // Process and clean the data (Example: Split each line into fields)
+            JavaRDD<String[]> cleanedData = rawData.map(line -> line.split(","));
 
-        // Create a DataFrame from the cleaned data
-        Class<?> yourSchema = null;
-        
-        Dataset<Row> dataFrame = hiveContext.createDataFrame(cleanedData.map(fields -> RowFactory.create((Object[]) fields)), yourSchema);
+            // Create a DataFrame from the cleaned data
+            Class<?> yourSchema = null;
 
-        // Store the DataFrame in Hive (replace "your_table" with the actual table name)
-        dataFrame.write().mode(SaveMode.Overwrite).saveAsTable("your_table");
+            Dataset<Row> dataFrame = hiveContext.createDataFrame(cleanedData.map(fields -> RowFactory.create((Object[]) fields)), yourSchema);
 
-        // Stop Spark context
-        sparkContext.stop();
+            // Store the DataFrame in Hive (replace "your_table" with the actual table name)
+            dataFrame.write().mode(SaveMode.Overwrite).saveAsTable("your_table");
+
+            // Stop Spark context
+            sparkContext.stop();
+        }
     }
 }
