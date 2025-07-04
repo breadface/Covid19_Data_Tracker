@@ -70,15 +70,55 @@ src/main/java/com/covid19_tracker/
 ### Required Software
 - **Java 11+**
 - **Apache Maven 3.6+**
-- **Apache Kafka 2.8+**
-- **Apache Spark 3.0+**
-- **Apache Hive 3.1+**
-- **Hadoop HDFS 3.2+**
+- **Docker & Docker Compose** (for cluster testing)
+- **Apache Kafka 2.8+** (for standalone deployment)
+- **Apache Spark 3.0+** (for standalone deployment)
+- **Apache Hive 3.1+** (for standalone deployment)
+- **Hadoop HDFS 3.2+** (for standalone deployment)
 
 ### System Requirements
-- **Memory**: 8GB+ RAM
+- **Memory**: 8GB+ RAM (16GB+ for Docker cluster)
 - **Storage**: 50GB+ free space
 - **Network**: Internet connection for API data ingestion
+
+## 🐳 **Quick Start with Docker Cluster**
+
+The easiest way to test the complete system is using the provided Docker setup:
+
+### 1. **Start the Hadoop Cluster**
+```bash
+# Run the automated setup script
+./scripts/setup-cluster.sh
+```
+
+This will:
+- Build the COVID-19 Data Tracker application
+- Start all Hadoop ecosystem services (Kafka, HDFS, Spark, Hive)
+- Create necessary topics and directories
+- Initialize the data pipeline
+
+### 2. **Monitor the Services**
+- **HDFS NameNode**: http://localhost:9870
+- **Spark Master**: http://localhost:8080
+- **Spark Worker**: http://localhost:8081
+
+### 3. **Quick Test**
+```bash
+# Run basic functionality tests
+./scripts/test-quick.sh
+```
+
+### 4. **View Application Logs**
+```bash
+# Monitor the COVID-19 Data Tracker
+docker logs -f covid19-tracker
+```
+
+### 5. **Stop the Cluster**
+```bash
+cd docker
+docker-compose down
+```
 
 ## ⚙️ Configuration
 
@@ -107,42 +147,19 @@ hdfs.checkpoint.path=hdfs://localhost:9000/covid19/checkpoints/
 hdfs.batch.path=hdfs://localhost:9000/covid19/batch/
 ```
 
-## 🚀 Quick Start
+## 🧪 **Testing Guide**
 
-### 1. Build the Project
+For comprehensive testing instructions, see [TESTING_GUIDE.md](docs/TESTING_GUIDE.md)
+
+### **Quick Testing Commands**
 ```bash
-mvn clean compile
-```
+# Test individual components
+mvn exec:java -Dexec.mainClass="com.covid19_tracker.ingestion.Covid19DataIngestionService"
+mvn exec:java -Dexec.mainClass="com.covid19_tracker.spark.Covid19StreamingJob"
+mvn exec:java -Dexec.mainClass="com.covid19_tracker.hive.Covid19HiveService"
 
-### 2. Start Required Services
-```bash
-# Start Kafka (ensure Zookeeper is running)
-kafka-server-start.sh config/server.properties
-
-# Start HDFS
-start-dfs.sh
-
-# Start Hive
-hive --service metastore &
-hive --service hiveserver2 &
-```
-
-### 3. Run the Application
-```bash
-# Run the main application
+# Test complete pipeline
 mvn exec:java -Dexec.mainClass="com.covid19_tracker.Covid19DataTrackerApp"
-```
-
-### 4. Monitor the Pipeline
-```bash
-# Check Kafka topics
-kafka-topics.sh --list --bootstrap-server localhost:9092
-
-# Monitor HDFS
-hdfs dfs -ls /covid19/
-
-# Query Hive tables
-hive -e "SELECT * FROM covid19_analytics LIMIT 10;"
 ```
 
 ## 📈 Analytics Capabilities
