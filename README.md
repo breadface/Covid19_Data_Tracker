@@ -1,11 +1,12 @@
 # COVID-19 Data Tracker - Big Data Edition
 
-A comprehensive big data solution for tracking COVID-19 morbidity and mortality in cancer patients using the **Hadoop ecosystem** - a complete distributed data processing platform.
+A comprehensive big data solution for tracking COVID-19 morbidity and mortality in cancer patients using the **Hadoop ecosystem** with a modern **React visualization frontend**.
 
 ## 🏗️ Architecture Overview
 
-This project implements a complete big data pipeline using individual **Hadoop ecosystem components**:
+This project implements a complete big data pipeline using individual **Hadoop ecosystem components** with a rich web-based visualization interface:
 
+### Backend (Big Data Pipeline)
 - **Apache Kafka** - Real-time data streaming and message queuing
 - **Apache Spark Streaming** - Real-time data processing and analytics
 - **Apache Hive** - Data warehousing and batch analytics
@@ -13,6 +14,13 @@ This project implements a complete big data pipeline using individual **Hadoop e
 - **PostgreSQL** - Metadata storage for Hive metastore
 - **ZooKeeper** - Distributed coordination service
 - **Java** - Core application development
+
+### Frontend (Visualization Dashboard)
+- **React 18** - Modern UI framework
+- **TypeScript** - Type-safe development
+- **D3.js** - Custom interactive charts
+- **Recharts** - React chart library
+- **Axios** - HTTP client for API communication
 
 ## 📊 Data Flow
 
@@ -29,7 +37,9 @@ HDFS Storage
     ↓
 Hive Analytics (Batch Processing)
     ↓
-Analytics Dashboard
+REST API
+    ↓
+React Frontend (Interactive Dashboard)
 ```
 
 ## 🚀 Quick Start
@@ -37,10 +47,11 @@ Analytics Dashboard
 ### Prerequisites
 - Docker and Docker Compose
 - Java 11+
+- Node.js 18+ (for React frontend)
 - Maven (or use the included Maven wrapper)
 - **Note**: This setup is optimized for Apple Silicon (M1/M2) Macs but works on all platforms
 
-### 1. Build the Application
+### 1. Build the Backend Application
 ```bash
 ./mvnw clean package -DskipTests
 ```
@@ -62,7 +73,16 @@ This will start the following services:
 - **Hive Server** - SQL query interface
 - **COVID-19 Tracker** - Main application
 
-### 3. Monitor the Services
+### 3. Start React Frontend
+```bash
+cd covid19-visualization
+npm install
+npm start
+```
+
+The React app will be available at: http://localhost:3000
+
+### 4. Monitor the Services
 ```bash
 # Check service status
 docker-compose ps
@@ -77,10 +97,39 @@ docker-compose logs -f covid19-tracker
 docker-compose logs namenode
 ```
 
-### 4. Access Web Interfaces
+### 5. Access Web Interfaces
+- **React Dashboard**: http://localhost:3000
 - **HDFS NameNode Web UI**: http://localhost:9870
 - **Spark Master**: http://localhost:8080
 - **Hive Server**: http://localhost:10002 (HiveServer2 Web UI)
+
+## 🎨 Frontend Features
+
+### Interactive Dashboard
+- **Real-time COVID-19 Data Visualization**
+  - Line charts showing cases and deaths over time
+  - Country-wise filtering and comparison
+  - Interactive tooltips with detailed information
+  - Responsive design for all screen sizes
+
+- **Cancer Patient Analytics**
+  - Mortality rate analysis for cancer patients with COVID-19
+  - Cancer type distribution charts
+  - Age and gender demographics
+  - Treatment interruption analysis
+
+- **Custom D3.js Charts**
+  - Interactive SVG-based visualizations
+  - Smooth animations and transitions
+  - Zoom and pan capabilities
+  - Export functionality
+
+### Chart Types
+- **Line Charts** - COVID-19 trends over time
+- **Bar Charts** - Country-wise comparisons
+- **Pie Charts** - Distribution analysis
+- **Area Charts** - Cumulative data visualization
+- **Custom D3 Charts** - Advanced interactive visualizations
 
 ## 📈 Data Sources
 
@@ -94,14 +143,19 @@ Data ingestion runs every 6 hours automatically.
 
 ## 🔧 Configuration
 
-### Environment Variables
+### Backend Environment Variables
 - `KAFKA_BOOTSTRAP_SERVERS` - Kafka cluster endpoints (kafka:29092)
 - `HDFS_NAMENODE` - HDFS NameNode address (hdfs://namenode:9000)
 - `SPARK_MASTER` - Spark master URL (spark://spark-master:7077)
 - `HIVE_SERVER` - Hive server address (hive-server:10000)
 - `CLUSTER_MODE` - Set to "hadoop" for Hadoop ecosystem
 
+### Frontend Configuration
+- `REACT_APP_API_BASE_URL` - Backend API endpoint (http://localhost:8082)
+- `REACT_APP_ENABLE_MOCK_DATA` - Enable mock data for development
+
 ### Ports
+- **3000** - React Frontend
 - **9870** - HDFS NameNode Web UI
 - **9000** - HDFS NameNode RPC
 - **9864** - HDFS DataNode Web UI
@@ -125,6 +179,13 @@ docker-compose logs covid19-tracker | grep "Ingested"
 
 # Test Kafka connectivity
 docker-compose exec kafka kafka-topics --list --bootstrap-server localhost:9092
+```
+
+### Test Frontend
+```bash
+cd covid19-visualization
+npm test
+npm run build
 ```
 
 ### Test Spark Processing
@@ -171,30 +232,68 @@ The system provides real-time and batch analytics:
 - Mortality rate analysis
 - Data quality metrics
 
+### Frontend Analytics
+- Interactive data exploration
+- Real-time chart updates
+- Filtered data views
+- Export capabilities
+
 ## 🛠️ Development
 
 ### Project Structure
 ```
-src/
-├── main/java/com/covid19_tracker/
-│   ├── model/           # Data models
-│   ├── kafka/           # Kafka producer/consumer
-│   ├── spark/           # Spark streaming jobs
-│   ├── hive/            # Hive analytics
-│   └── ingestion/       # Data ingestion services
-└── test/                # Unit tests
+├── src/                          # Backend Java source
+│   ├── main/java/com/covid19_tracker/
+│   │   ├── model/               # Data models
+│   │   ├── kafka/               # Kafka producer/consumer
+│   │   ├── spark/               # Spark streaming jobs
+│   │   ├── hive/                # Hive analytics
+│   │   └── ingestion/           # Data ingestion services
+│   └── test/                    # Unit tests
+├── covid19-visualization/        # React frontend
+│   ├── src/
+│   │   ├── components/          # React components
+│   │   │   ├── Dashboard.tsx    # Main dashboard
+│   │   │   ├── CustomSVGChart.tsx # D3.js charts
+│   │   │   └── Dashboard.css    # Styling
+│   │   ├── services/            # API services
+│   │   │   └── api.ts           # Backend communication
+│   │   └── App.tsx              # Main app component
+│   ├── package.json             # Frontend dependencies
+│   └── tsconfig.json            # TypeScript config
+├── docker-compose.yml           # Docker services
+├── Dockerfile                   # Backend container
+└── README.md                    # This file
 ```
 
 ### Building
 ```bash
-# Build with tests
+# Build backend with tests
 ./mvnw clean package
 
-# Build without tests
+# Build backend without tests
 ./mvnw clean package -DskipTests
 
-# Run tests only
-./mvnw test
+# Build frontend
+cd covid19-visualization
+npm install
+npm run build
+```
+
+### Development Workflow
+```bash
+# Start backend services
+docker-compose up -d
+
+# Start frontend in development mode
+cd covid19-visualization
+npm start
+
+# Run tests
+npm test
+
+# Build for production
+npm run build
 ```
 
 ## 🔍 Troubleshooting
@@ -229,7 +328,18 @@ src/
    docker-compose exec covid19-tracker nc -zv kafka 29092
    ```
 
-4. **Platform-specific issues (Apple Silicon)**
+4. **Frontend TypeScript errors**
+   ```bash
+   # Install missing dependencies
+   cd covid19-visualization
+   npm install @types/react @types/d3
+   
+   # Clear TypeScript cache
+   rm -rf node_modules/.cache
+   npm start
+   ```
+
+5. **Platform-specific issues (Apple Silicon)**
    ```bash
    # HDFS images are emulated on Apple Silicon and may be slower
    # If you experience issues, consider:
@@ -250,6 +360,9 @@ docker-compose logs datanode
 # Kafka logs
 docker-compose logs kafka
 
+# Frontend logs (in covid19-visualization directory)
+npm start
+
 # All logs
 docker-compose logs
 ```
@@ -262,6 +375,9 @@ docker-compose ps
 # Check specific service health
 docker-compose exec namenode curl -f http://localhost:9870
 docker-compose exec datanode curl -f http://localhost:9864
+
+# Check frontend
+curl -f http://localhost:3000
 ```
 
 ## 🐳 Docker Services
@@ -282,6 +398,24 @@ docker-compose exec datanode curl -f http://localhost:9864
 - **hadoop_namenode** - HDFS NameNode data
 - **hadoop_datanode** - HDFS DataNode data
 - **postgres_data** - PostgreSQL data
+
+## 🆕 Recent Updates
+
+### TypeScript & D3.js Fixes
+- Fixed D3 tickFormat type errors with proper function signatures
+- Added explicit type annotations for D3 NumberValue and Date types
+- Fixed .call(xAxis) errors with 'as any' type casting
+- Added missing 'country' property to CancerPatientData interface
+- Fixed percent undefined error in Pie chart labels
+- Updated tsconfig.json for proper TypeScript configuration
+- Installed missing type definitions for React and D3
+
+### React Frontend
+- Complete interactive dashboard with multiple chart types
+- Custom D3.js visualizations with interactive features
+- Real-time data filtering and comparison
+- Responsive design for all screen sizes
+- TypeScript for type-safe development
 
 ## 📝 License
 
