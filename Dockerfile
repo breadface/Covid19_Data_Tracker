@@ -64,14 +64,7 @@ while ! nc -z spark-master 7077; do\n\
 done\n\
 echo "Spark Master is ready!"\n\
 \n\
-echo "Waiting for Hive Server..."\n\
-while ! nc -z hive-server 10000; do\n\
-  echo "Waiting for Hive Server..."\n\
-  sleep 5\n\
-done\n\
-echo "Hive Server is ready!"\n\
-\n\
-echo "All Hadoop ecosystem services are ready!"\n\
+echo "Core Hadoop ecosystem services are ready!"\n\
 echo "Starting COVID-19 Data Tracker Application..."\n\
 \n\
 java -jar /app/app.jar\n\

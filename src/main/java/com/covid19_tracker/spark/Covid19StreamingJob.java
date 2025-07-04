@@ -32,13 +32,13 @@ public class Covid19StreamingJob {
     private static final Logger logger = LoggerFactory.getLogger(Covid19StreamingJob.class);
     
     // Kafka configuration
-    private static final String BOOTSTRAP_SERVERS = "localhost:9092";
+    private static final String BOOTSTRAP_SERVERS = "kafka:29092";
     private static final String TOPIC_NAME = "covid19-data";
     private static final String GROUP_ID = "spark-streaming-group";
     
     // HDFS output paths
-    private static final String HDFS_OUTPUT_PATH = "hdfs://localhost:9000/covid19/streaming/";
-    private static final String HDFS_CHECKPOINT_PATH = "hdfs://localhost:9000/covid19/checkpoints/";
+    private static final String HDFS_OUTPUT_PATH = "hdfs://namenode:9000/covid19/streaming/";
+    private static final String HDFS_CHECKPOINT_PATH = "hdfs://namenode:9000/covid19/checkpoints/";
     
     private final JavaStreamingContext streamingContext;
     private final ObjectMapper objectMapper;

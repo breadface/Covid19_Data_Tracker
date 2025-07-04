@@ -23,7 +23,7 @@ public class Covid19DataProducer {
     private static final String TOPIC_NAME = "covid19-data";
     
     // Use environment variable for Cloudera CDH, fallback to localhost
-    private static final String BOOTSTRAP_SERVERS = System.getenv().getOrDefault("KAFKA_BOOTSTRAP_SERVERS", "cloudera-manager:9092");
+    private static final String BOOTSTRAP_SERVERS = System.getenv().getOrDefault("KAFKA_BOOTSTRAP_SERVERS", "kafka:29092");
     
     private final KafkaProducer<String, String> producer;
     private final ObjectMapper objectMapper;
