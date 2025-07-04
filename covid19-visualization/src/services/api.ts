@@ -18,7 +18,6 @@ export interface CancerPatientData {
   gender: string;
   cancerType: string;
   cancerStage: string;
-  country?: string;
   covid19PositiveDate?: string;
   covid19Severity?: string;
   hospitalized?: boolean;
@@ -238,17 +237,18 @@ class ApiService {
     const severities = ['mild', 'moderate', 'severe', 'critical'];
     const outcomes = ['recovered', 'died', 'ongoing'];
     const vaccinationStatuses = ['unvaccinated', 'partially', 'fully', 'boosted'];
-    const countries = ['United States', 'India', 'Brazil', 'United Kingdom', 'France', 'Germany'];
+    
     const data: CancerPatientData[] = [];
+    
     for (let i = 0; i < 500; i++) {
-      const hasCovid = Math.random() > 0.7;
+      const hasCovid = Math.random() > 0.7; // 30% of cancer patients have COVID-19
+      
       data.push({
         patientId: `PAT-${String(i + 1).padStart(4, '0')}`,
         age: Math.floor(Math.random() * 50) + 30,
         gender: Math.random() > 0.5 ? 'Male' : 'Female',
         cancerType: cancerTypes[Math.floor(Math.random() * cancerTypes.length)],
         cancerStage: stages[Math.floor(Math.random() * stages.length)],
-        country: countries[Math.floor(Math.random() * countries.length)],
         covid19PositiveDate: hasCovid ? new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : undefined,
         covid19Severity: hasCovid ? severities[Math.floor(Math.random() * severities.length)] : undefined,
         hospitalized: hasCovid ? Math.random() > 0.6 : undefined,
@@ -259,6 +259,7 @@ class ApiService {
         vaccinationStatus: vaccinationStatuses[Math.floor(Math.random() * vaccinationStatuses.length)]
       });
     }
+    
     return data;
   }
 }

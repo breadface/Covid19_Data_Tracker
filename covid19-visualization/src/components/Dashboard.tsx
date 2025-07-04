@@ -104,17 +104,19 @@ const Dashboard: React.FC = () => {
     const severities = ['mild', 'moderate', 'severe', 'critical'];
     const outcomes = ['recovered', 'died', 'ongoing'];
     const vaccinationStatuses = ['unvaccinated', 'partially', 'fully', 'boosted'];
-    const countries = ['United States', 'India', 'Brazil', 'United Kingdom', 'France', 'Germany'];
+    
     const data: CancerPatientData[] = [];
+    
     for (let i = 0; i < 500; i++) {
-      const hasCovid = Math.random() > 0.7;
+      const hasCovid = Math.random() > 0.7; // 30% of cancer patients have COVID-19
+      
       data.push({
         patientId: `PAT-${String(i + 1).padStart(4, '0')}`,
         age: Math.floor(Math.random() * 50) + 30,
         gender: Math.random() > 0.5 ? 'Male' : 'Female',
         cancerType: cancerTypes[Math.floor(Math.random() * cancerTypes.length)],
         cancerStage: stages[Math.floor(Math.random() * stages.length)],
-        country: countries[Math.floor(Math.random() * countries.length)],
+        country: 'United States',
         covid19PositiveDate: hasCovid ? new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : undefined,
         covid19Severity: hasCovid ? severities[Math.floor(Math.random() * severities.length)] : undefined,
         hospitalized: hasCovid ? Math.random() > 0.6 : undefined,
@@ -125,11 +127,12 @@ const Dashboard: React.FC = () => {
         vaccinationStatus: vaccinationStatuses[Math.floor(Math.random() * vaccinationStatuses.length)]
       });
     }
+    
     return data;
   };
 
   const calculateMortalityAnalysis = (covidData: Covid19Data[], cancerData: CancerPatientData[]): MortalityAnalysis[] => {
-    const countries = Array.from(new Set(covidData.map(d => d.country)));
+    const countries = [...new Set(covidData.map(d => d.country))];
     
     return countries.map(country => {
       const countryCovidData = covidData.filter(d => d.country === country);
@@ -157,17 +160,17 @@ const Dashboard: React.FC = () => {
     });
   };
 
-  const filteredCovidData = covidData.filter((d: Covid19Data) => 
+  const filteredCovidData = covidData.filter(d => 
     selectedCountry === 'All' || d.country === selectedCountry
   );
 
-  const filteredCancerData = cancerData.filter((d: CancerPatientData) => 
+  const filteredCancerData = cancerData.filter(d => 
     (selectedCountry === 'All' || d.country === selectedCountry) &&
     (selectedCancerType === 'All' || d.cancerType === selectedCancerType)
   );
 
-  const cancerPatientsWithCovid = filteredCancerData.filter((d: CancerPatientData) => d.covid19PositiveDate);
-  const cancerPatientMortality = cancerPatientsWithCovid.filter((d: CancerPatientData) => d.covid19Outcome === 'died').length;
+  const cancerPatientsWithCovid = filteredCancerData.filter(d => d.covid19PositiveDate);
+  const cancerPatientMortality = cancerPatientsWithCovid.filter(d => d.covid19Outcome === 'died').length;
   const cancerPatientMortalityRate = cancerPatientsWithCovid.length > 0 ? 
     (cancerPatientMortality / cancerPatientsWithCovid.length) * 100 : 0;
 
@@ -190,7 +193,7 @@ const Dashboard: React.FC = () => {
             onChange={(e) => setSelectedCountry(e.target.value)}
           >
             <option value="All">All Countries</option>
-            {Array.from(new Set(covidData.map((d: Covid19Data) => d.country))).map((country: string) => (
+            {[...new Set(covidData.map(d => d.country))].map(country => (
               <option key={country} value={country}>{country}</option>
             ))}
           </select>
@@ -203,7 +206,7 @@ const Dashboard: React.FC = () => {
             onChange={(e) => setSelectedCancerType(e.target.value)}
           >
             <option value="All">All Types</option>
-            {Array.from(new Set(cancerData.map((d: CancerPatientData) => d.cancerType))).map((type: string) => (
+            {[...new Set(cancerData.map(d => d.cancerType))].map(type => (
               <option key={type} value={type}>{type}</option>
             ))}
           </select>
@@ -279,11 +282,11 @@ const Dashboard: React.FC = () => {
             <PieChart>
               <Pie
                 data={Object.entries(
-                  filteredCancerData.reduce((acc: Record<string, number>, d: CancerPatientData) => {
+                  filteredCancerData.reduce((acc, d) => {
                     acc[d.cancerType] = (acc[d.cancerType] || 0) + 1;
                     return acc;
                   }, {} as Record<string, number>)
-                ).map(([type, count]: [string, number]) => ({ name: type, value: count }))}
+                ).map(([type, count]) => ({ name: type, value: count }))}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
@@ -293,7 +296,7 @@ const Dashboard: React.FC = () => {
                 dataKey="value"
               >
                 {Object.entries(
-                  filteredCancerData.reduce((acc: Record<string, number>, d: CancerPatientData) => {
+                  filteredCancerData.reduce((acc, d) => {
                     acc[d.cancerType] = (acc[d.cancerType] || 0) + 1;
                     return acc;
                   }, {} as Record<string, number>)
@@ -310,13 +313,13 @@ const Dashboard: React.FC = () => {
           <h3>COVID-19 Severity in Cancer Patients</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={Object.entries(
-              cancerPatientsWithCovid.reduce((acc: Record<string, number>, d: CancerPatientData) => {
+              cancerPatientsWithCovid.reduce((acc, d) => {
                 if (d.covid19Severity) {
                   acc[d.covid19Severity] = (acc[d.covid19Severity] || 0) + 1;
                 }
                 return acc;
               }, {} as Record<string, number>)
-            ).map(([severity, count]: [string, number]) => ({ severity, count }))}>
+            ).map(([severity, count]) => ({ severity, count }))}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="severity" />
               <YAxis />
@@ -345,11 +348,11 @@ const Dashboard: React.FC = () => {
           <h3>Vaccination Status Impact</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={Object.entries(
-              cancerPatientsWithCovid.reduce((acc: Record<string, number>, d: CancerPatientData) => {
+              cancerPatientsWithCovid.reduce((acc, d) => {
                 acc[d.vaccinationStatus || 'unknown'] = (acc[d.vaccinationStatus || 'unknown'] || 0) + 1;
                 return acc;
               }, {} as Record<string, number>)
-            ).map(([status, count]: [string, number]) => ({ status, count }))}>
+            ).map(([status, count]) => ({ status, count }))}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="status" />
               <YAxis />
