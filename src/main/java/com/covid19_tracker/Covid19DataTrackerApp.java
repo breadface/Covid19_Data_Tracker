@@ -2,6 +2,7 @@ package com.covid19_tracker;
 
 import com.covid19_tracker.hive.Covid19HiveService;
 import com.covid19_tracker.ingestion.Covid19DataIngestionService;
+import com.covid19_tracker.kafka.Covid19DataProducer;
 import com.covid19_tracker.spark.Covid19StreamingJob;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,13 +19,15 @@ public class Covid19DataTrackerApp {
     
     private static final Logger logger = LoggerFactory.getLogger(Covid19DataTrackerApp.class);
     
+    private final Covid19DataProducer kafkaProducer;
     private final Covid19DataIngestionService ingestionService;
     private final Covid19StreamingJob streamingJob;
     private final Covid19HiveService hiveService;
     private final ExecutorService executorService;
     
     public Covid19DataTrackerApp() {
-        this.ingestionService = new Covid19DataIngestionService();
+        this.kafkaProducer = new Covid19DataProducer();
+        this.ingestionService = new Covid19DataIngestionService(kafkaProducer);
         this.streamingJob = new Covid19StreamingJob();
         this.hiveService = new Covid19HiveService();
         this.executorService = Executors.newFixedThreadPool(3);
@@ -37,11 +40,11 @@ public class Covid19DataTrackerApp {
         logger.info("Starting COVID-19 Data Tracker Application");
         
         try {
-            // Start data ingestion service (Kafka producer)
+            // Start data ingestion service
             executorService.submit(() -> {
                 try {
                     logger.info("Starting COVID-19 data ingestion service");
-                    ingestionService.startContinuousIngestion(5); // Run every 5 minutes
+                    ingestionService.start();
                 } catch (Exception e) {
                     logger.error("Error in data ingestion service: {}", e.getMessage());
                 }
@@ -144,13 +147,16 @@ public class Covid19DataTrackerApp {
         
         try {
             // Stop ingestion service
-            ingestionService.close();
+            ingestionService.stop();
             
             // Stop streaming job
             streamingJob.stop();
             
             // Close Hive service
             hiveService.close();
+            
+            // Close Kafka producer
+            kafkaProducer.close();
             
             // Shutdown executor service
             executorService.shutdown();

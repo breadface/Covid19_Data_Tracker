@@ -33,6 +33,23 @@ RUN mkdir -p /app/logs
 
 # Create startup script
 RUN echo '#!/bin/bash\n\
+\n\
+echo "Waiting for Hadoop ecosystem services..."\n\
+\n\
+echo "Waiting for HDFS NameNode..."\n\
+while ! nc -z namenode 9000; do\n\
+  echo "Waiting for HDFS NameNode..."\n\
+  sleep 10\n\
+done\n\
+echo "HDFS NameNode is ready!"\n\
+\n\
+echo "Waiting for HDFS DataNode..."\n\
+while ! nc -z datanode 9864; do\n\
+  echo "Waiting for HDFS DataNode..."\n\
+  sleep 5\n\
+done\n\
+echo "HDFS DataNode is ready!"\n\
+\n\
 echo "Waiting for Kafka..."\n\
 while ! nc -z kafka 29092; do\n\
   echo "Waiting for Kafka..."\n\
@@ -47,12 +64,21 @@ while ! nc -z spark-master 7077; do\n\
 done\n\
 echo "Spark Master is ready!"\n\
 \n\
-echo "Starting COVID-19 Data Tracker..."\n\
+echo "Waiting for Hive Server..."\n\
+while ! nc -z hive-server 10000; do\n\
+  echo "Waiting for Hive Server..."\n\
+  sleep 5\n\
+done\n\
+echo "Hive Server is ready!"\n\
+\n\
+echo "All Hadoop ecosystem services are ready!"\n\
+echo "Starting COVID-19 Data Tracker Application..."\n\
+\n\
 java -jar /app/app.jar\n\
 ' > /app/start.sh && chmod +x /app/start.sh
 
 # Expose port
 EXPOSE 8082
 
-# Set entrypoint
-ENTRYPOINT ["/app/start.sh"] 
+# Start the application
+CMD ["/app/start.sh"] 

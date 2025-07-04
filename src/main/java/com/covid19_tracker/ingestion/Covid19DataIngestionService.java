@@ -14,174 +14,249 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Service for ingesting COVID-19 data from external APIs into the Kafka pipeline
+ * Service for ingesting COVID-19 data from multiple sources
  */
 public class Covid19DataIngestionService {
     
     private static final Logger logger = LoggerFactory.getLogger(Covid19DataIngestionService.class);
     
-    // COVID-19 data sources
-    private static final String JHU_CSSE_API = "https://disease.sh/v3/covid-19/historical/all?lastdays=1";
-    private static final String WHO_API = "https://covid19.who.int/WHO-COVID-19-global-data.csv";
-    
+    private final Covid19DataProducer producer;
     private final OkHttpClient httpClient;
     private final ObjectMapper objectMapper;
-    private final Covid19DataProducer kafkaProducer;
+    private final ScheduledExecutorService scheduler;
     
-    public Covid19DataIngestionService() {
+    // Data sources
+    private static final String JHU_CSSE_URL = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/";
+    private static final String WHO_API_URL = "https://covid19.who.int/WHO-COVID-19-global-data.csv";
+    private static final String OUR_WORLD_IN_DATA_URL = "https://covid.ourworldindata.org/data/owid-covid-data.json";
+    
+    public Covid19DataIngestionService(Covid19DataProducer producer) {
+        this.producer = producer;
         this.httpClient = new OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .build();
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .build();
         this.objectMapper = new ObjectMapper();
-        this.kafkaProducer = new Covid19DataProducer();
+        this.scheduler = Executors.newScheduledThreadPool(2);
+        
+        logger.info("Initialized COVID-19 Data Ingestion Service");
     }
     
     /**
-     * Ingest COVID-19 data from JHU CSSE API
+     * Start the data ingestion service
      */
-    public void ingestFromJHU() {
+    public void start() {
+        logger.info("Starting COVID-19 data ingestion service...");
+        
+        // Initial data load
+        ingestAllSources();
+        
+        // Schedule periodic ingestion (every 6 hours)
+        scheduler.scheduleAtFixedRate(this::ingestAllSources, 6, 6, TimeUnit.HOURS);
+        
+        logger.info("COVID-19 data ingestion service started");
+    }
+    
+    /**
+     * Stop the data ingestion service
+     */
+    public void stop() {
+        logger.info("Stopping COVID-19 data ingestion service...");
+        scheduler.shutdown();
         try {
-            logger.info("Ingesting COVID-19 data from JHU CSSE API");
+            if (!scheduler.awaitTermination(60, TimeUnit.SECONDS)) {
+                scheduler.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            scheduler.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        logger.info("COVID-19 data ingestion service stopped");
+    }
+    
+    /**
+     * Ingest data from all sources
+     */
+    private void ingestAllSources() {
+        try {
+            logger.info("Starting data ingestion from all sources...");
+            
+            // Ingest from JHU CSSE
+            ingestFromJHU();
+            
+            // Ingest from Our World in Data
+            ingestFromOurWorldInData();
+            
+            logger.info("Data ingestion completed");
+            
+        } catch (Exception e) {
+            logger.error("Error during data ingestion: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Ingest data from JHU CSSE GitHub repository
+     */
+    private void ingestFromJHU() {
+        try {
+            logger.info("Ingesting data from JHU CSSE...");
+            
+            // Get today's date in the format used by JHU
+            String today = LocalDate.now().format(DateTimeFormatter.ofPattern("MM-dd-yyyy"));
+            String url = JHU_CSSE_URL + today + ".csv";
             
             Request request = new Request.Builder()
-                    .url(JHU_CSSE_API)
-                    .build();
+                .url(url)
+                .build();
+            
+            try (Response response = httpClient.newCall(request).execute()) {
+                if (response.isSuccessful() && response.body() != null) {
+                    String csvData = response.body().string();
+                    List<Covid19Data> covidDataList = parseJHUCSV(csvData);
+                    
+                    for (Covid19Data data : covidDataList) {
+                        data.setDataSource("JHU-CSSE");
+                        producer.sendCovid19Data(data);
+                    }
+                    
+                    logger.info("Ingested {} records from JHU CSSE", covidDataList.size());
+                } else {
+                    logger.warn("Failed to fetch JHU data: HTTP {}", response.code());
+                }
+            }
+            
+        } catch (Exception e) {
+            logger.error("Error ingesting from JHU CSSE: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Ingest data from Our World in Data
+     */
+    private void ingestFromOurWorldInData() {
+        try {
+            logger.info("Ingesting data from Our World in Data...");
+            
+            Request request = new Request.Builder()
+                .url(OUR_WORLD_IN_DATA_URL)
+                .build();
             
             try (Response response = httpClient.newCall(request).execute()) {
                 if (response.isSuccessful() && response.body() != null) {
                     String jsonData = response.body().string();
-                    processJHUData(jsonData);
+                    List<Covid19Data> covidDataList = parseOurWorldInDataJSON(jsonData);
+                    
+                    for (Covid19Data data : covidDataList) {
+                        data.setDataSource("Our-World-in-Data");
+                        producer.sendCovid19Data(data);
+                    }
+                    
+                    logger.info("Ingested {} records from Our World in Data", covidDataList.size());
                 } else {
-                    logger.error("Failed to fetch data from JHU API: {}", response.code());
+                    logger.warn("Failed to fetch Our World in Data: HTTP {}", response.code());
                 }
             }
             
-        } catch (IOException e) {
-            logger.error("Error ingesting data from JHU API: {}", e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error ingesting from Our World in Data: {}", e.getMessage(), e);
         }
     }
     
     /**
-     * Process JHU CSSE API response
+     * Parse JHU CSSE CSV data
      */
-    private void processJHUData(String jsonData) {
+    private List<Covid19Data> parseJHUCSV(String csvData) {
+        List<Covid19Data> dataList = new ArrayList<>();
+        
         try {
-            JsonNode rootNode = objectMapper.readTree(jsonData);
+            String[] lines = csvData.split("\n");
             
-            // Extract global data
-            JsonNode casesNode = rootNode.get("cases");
-            JsonNode deathsNode = rootNode.get("deaths");
-            JsonNode recoveredNode = rootNode.get("recovered");
-            
-            if (casesNode != null && casesNode.isObject()) {
-                // Get the latest date (last key in the object)
-                String latestDate = casesNode.fieldNames().next();
+            // Skip header
+            for (int i = 1; i < lines.length; i++) {
+                String line = lines[i];
+                if (line.trim().isEmpty()) continue;
                 
-                Covid19Data covid19Data = new Covid19Data();
-                covid19Data.setDate(LocalDate.parse(latestDate, DateTimeFormatter.ofPattern("M/d/yy")));
-                covid19Data.setCountry("Global");
-                covid19Data.setConfirmedCases(casesNode.get(latestDate).asInt());
-                covid19Data.setDeaths(deathsNode != null ? deathsNode.get(latestDate).asInt() : 0);
-                covid19Data.setRecovered(recoveredNode != null ? recoveredNode.get(latestDate).asInt() : 0);
-                covid19Data.setDataSource("JHU-CSSE");
-                covid19Data.setLastUpdated(LocalDate.now());
-                
-                // Send to Kafka
-                kafkaProducer.sendCovid19Data(covid19Data);
-                logger.info("Ingested global COVID-19 data: Cases={}, Deaths={}", 
-                           covid19Data.getConfirmedCases(), covid19Data.getDeaths());
-            }
-            
-        } catch (JsonProcessingException e) {
-            logger.error("Error processing JHU data: {}", e.getMessage());
-        }
-    }
-    
-    /**
-     * Ingest sample data for testing
-     */
-    public void ingestSampleData() {
-        logger.info("Ingesting sample COVID-19 data");
-        
-        // Sample data for different countries
-        String[] countries = {"United States", "India", "Brazil", "United Kingdom", "France"};
-        int[] cases = {1000000, 800000, 600000, 400000, 300000};
-        int[] deaths = {50000, 40000, 30000, 20000, 15000};
-        
-        for (int i = 0; i < countries.length; i++) {
-            Covid19Data covid19Data = new Covid19Data(
-                LocalDate.now(),
-                countries[i],
-                cases[i],
-                deaths[i]
-            );
-            covid19Data.setDataSource("sample-data");
-            covid19Data.setLastUpdated(LocalDate.now());
-            
-            kafkaProducer.sendCovid19Data(covid19Data);
-            
-            try {
-                Thread.sleep(1000); // Small delay between messages
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
-        }
-        
-        logger.info("Sample data ingestion completed");
-    }
-    
-    /**
-     * Start continuous ingestion with specified interval
-     */
-    public void startContinuousIngestion(long intervalMinutes) {
-        logger.info("Starting continuous COVID-19 data ingestion every {} minutes", intervalMinutes);
-        
-        Thread ingestionThread = new Thread(() -> {
-            while (!Thread.currentThread().isInterrupted()) {
-                try {
-                    ingestFromJHU();
-                    Thread.sleep(intervalMinutes * 60 * 1000);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                } catch (Exception e) {
-                    logger.error("Error in continuous ingestion: {}", e.getMessage());
+                String[] fields = line.split(",");
+                if (fields.length >= 8) {
+                    try {
+                        String country = fields[3].replace("\"", "");
+                        String state = fields[2].replace("\"", "");
+                        int confirmed = Integer.parseInt(fields[7].replace("\"", ""));
+                        int deaths = Integer.parseInt(fields[8].replace("\"", ""));
+                        
+                        Covid19Data data = new Covid19Data(
+                            LocalDate.now(),
+                            country,
+                            confirmed,
+                            deaths
+                        );
+                        data.setStateProvince(state);
+                        dataList.add(data);
+                        
+                    } catch (NumberFormatException e) {
+                        logger.debug("Skipping invalid data line: {}", line);
+                    }
                 }
             }
-        });
+            
+        } catch (Exception e) {
+            logger.error("Error parsing JHU CSV: {}", e.getMessage(), e);
+        }
         
-        ingestionThread.setDaemon(true);
-        ingestionThread.start();
+        return dataList;
     }
     
     /**
-     * Close the ingestion service
+     * Parse Our World in Data JSON
      */
-    public void close() {
-        kafkaProducer.close();
-        logger.info("COVID-19 data ingestion service closed");
-    }
-    
-    /**
-     * Main method for testing
-     */
-    public static void main(String[] args) {
-        Covid19DataIngestionService service = new Covid19DataIngestionService();
+    private List<Covid19Data> parseOurWorldInDataJSON(String jsonData) {
+        List<Covid19Data> dataList = new ArrayList<>();
         
         try {
-            // Test with sample data
-            service.ingestSampleData();
+            JsonNode root = objectMapper.readTree(jsonData);
             
-            // Test with real API data
-            service.ingestFromJHU();
+            for (JsonNode countryNode : root) {
+                String country = countryNode.get("location").asText();
+                JsonNode data = countryNode.get("data");
+                
+                if (data != null && data.isArray()) {
+                    for (JsonNode dayData : data) {
+                        try {
+                            String dateStr = dayData.get("date").asText();
+                            LocalDate date = LocalDate.parse(dateStr);
+                            
+                            int confirmed = dayData.has("total_cases") ? dayData.get("total_cases").asInt() : 0;
+                            int deaths = dayData.has("total_deaths") ? dayData.get("total_deaths").asInt() : 0;
+                            
+                            Covid19Data covidData = new Covid19Data(date, country, confirmed, deaths);
+                            dataList.add(covidData);
+                            
+                        } catch (Exception e) {
+                            logger.debug("Skipping invalid day data for {}: {}", country, e.getMessage());
+                        }
+                    }
+                }
+            }
             
-        } finally {
-            service.close();
+        } catch (Exception e) {
+            logger.error("Error parsing Our World in Data JSON: {}", e.getMessage(), e);
         }
+        
+        return dataList;
+    }
+    
+    /**
+     * Manual ingestion trigger for testing
+     */
+    public void triggerIngestion() {
+        logger.info("Manual ingestion triggered");
+        scheduler.submit(this::ingestAllSources);
     }
 } 
