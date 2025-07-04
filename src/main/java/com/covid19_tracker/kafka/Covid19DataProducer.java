@@ -21,7 +21,9 @@ public class Covid19DataProducer {
     
     private static final Logger logger = LoggerFactory.getLogger(Covid19DataProducer.class);
     private static final String TOPIC_NAME = "covid19-data";
-    private static final String BOOTSTRAP_SERVERS = "localhost:9092";
+    
+    // Use environment variable for Cloudera CDH, fallback to localhost
+    private static final String BOOTSTRAP_SERVERS = System.getenv().getOrDefault("KAFKA_BOOTSTRAP_SERVERS", "cloudera-manager:9092");
     
     private final KafkaProducer<String, String> producer;
     private final ObjectMapper objectMapper;
@@ -30,6 +32,8 @@ public class Covid19DataProducer {
         this.producer = createProducer();
         this.objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules(); // Register JavaTimeModule for LocalDate
+        
+        logger.info("Initialized Kafka producer with bootstrap servers: {}", BOOTSTRAP_SERVERS);
     }
     
     private KafkaProducer<String, String> createProducer() {

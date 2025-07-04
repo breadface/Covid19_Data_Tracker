@@ -1,15 +1,17 @@
 # COVID-19 Data Tracker - Big Data Edition
 
-A comprehensive big data solution for tracking COVID-19 morbidity and mortality in cancer patients using the Hadoop ecosystem.
+A comprehensive big data solution for tracking COVID-19 morbidity and mortality in cancer patients using **Cloudera CDH** - a complete Hadoop ecosystem.
 
 ## 🏗️ Architecture Overview
 
-This project implements a complete big data pipeline using:
+This project implements a complete big data pipeline using **Cloudera CDH 7.1.4**:
 
+- **Cloudera Manager** - Cluster management and monitoring
 - **Apache Kafka** - Real-time data streaming and message queuing
 - **Apache Spark Streaming** - Real-time data processing and analytics
 - **Apache Hive** - Data warehousing and batch analytics
 - **HDFS** - Distributed file storage
+- **Hue** - Web-based Hadoop user interface
 - **Java** - Core application development
 
 ## 📊 Data Flow
@@ -70,48 +72,54 @@ src/main/java/com/covid19_tracker/
 ### Required Software
 - **Java 11+**
 - **Apache Maven 3.6+**
-- **Docker & Docker Compose** (for cluster testing)
-- **Apache Kafka 2.8+** (for standalone deployment)
-- **Apache Spark 3.0+** (for standalone deployment)
-- **Apache Hive 3.1+** (for standalone deployment)
-- **Hadoop HDFS 3.2+** (for standalone deployment)
+- **Docker & Docker Compose** (for Cloudera CDH cluster)
+- **8GB+ RAM** (16GB+ recommended for optimal performance)
 
 ### System Requirements
-- **Memory**: 8GB+ RAM (16GB+ for Docker cluster)
+- **Memory**: 8GB+ RAM (16GB+ for Cloudera CDH cluster)
 - **Storage**: 50GB+ free space
 - **Network**: Internet connection for API data ingestion
 
-## 🐳 **Quick Start with Docker Cluster**
+## 🐳 **Quick Start with Cloudera CDH Cluster**
 
-The easiest way to test the complete system is using the provided Docker setup:
+The easiest way to test the complete system is using the provided **Cloudera CDH** setup:
 
-### 1. **Start the Hadoop Cluster**
+### 1. **Build the Application**
 ```bash
-# Run the automated setup script
-./scripts/setup-cluster.sh
+# Build the COVID-19 Data Tracker application
+./mvnw clean package -DskipTests
+```
+
+### 2. **Start the Cloudera CDH Cluster**
+```bash
+# Start the complete Cloudera CDH cluster
+docker-compose up -d
 ```
 
 This will:
-- Build the COVID-19 Data Tracker application
-- Start all Hadoop ecosystem services (Kafka, HDFS, Spark, Hive)
-- Create necessary topics and directories
-- Initialize the data pipeline
+- Start a complete **Cloudera CDH 7.1.4** cluster
+- Initialize all Hadoop ecosystem services
+- Set up the data pipeline
 
-### 2. **Monitor the Services**
-- **HDFS NameNode**: http://localhost:9870
+**⚠️ First startup may take 5-10 minutes as it downloads and initializes the full Cloudera CDH cluster.**
+
+### 3. **Access Cloudera CDH Services**
+- **Cloudera Manager**: http://localhost:7180 (admin/admin)
+- **Hue Web UI**: http://localhost:8888
+- **HDFS NameNode**: http://localhost:50070
 - **Spark Master**: http://localhost:8080
-- **Spark Worker**: http://localhost:8081
+- **Spark History**: http://localhost:18080
 
-### 3. **Quick Test**
+### 4. **Monitor the Application**
 ```bash
-# Run basic functionality tests
-./scripts/test-quick.sh
-```
+# View application logs
+docker-compose logs -f covid19-tracker
 
-### 4. **View Application Logs**
-```bash
-# Monitor the COVID-19 Data Tracker
-docker logs -f covid19-tracker
+# Monitor cluster health
+docker-compose logs -f cloudera-manager
+
+# Check service status
+docker-compose ps
 ```
 
 ### 5. **Stop the Cluster**
@@ -121,44 +129,61 @@ docker-compose down
 
 ## ⚙️ Configuration
 
-### Kafka Configuration
+### Cloudera CDH Configuration
+The cluster is pre-configured with:
+- **CDH Version**: 7.1.4
+- **Services**: HDFS, Spark, Kafka, Hive, Hue, ZooKeeper
+- **Memory Allocation**: Optimized for development/testing
+
+### Application Configuration
 ```properties
 # Kafka broker settings
-bootstrap.servers=localhost:9092
+bootstrap.servers=cloudera-manager:9092
 topic.name=covid19-data
 group.id=covid19-tracker-group
-```
 
-### Spark Configuration
-```properties
 # Spark streaming settings
-spark.master=local[*]
+spark.master=spark://cloudera-manager:7077
 spark.app.name=COVID-19 Streaming Analytics
 batch.interval=10 seconds
 window.duration=5 minutes
-```
 
-### HDFS Configuration
-```properties
 # HDFS paths
-hdfs.output.path=hdfs://localhost:9000/covid19/streaming/
-hdfs.checkpoint.path=hdfs://localhost:9000/covid19/checkpoints/
-hdfs.batch.path=hdfs://localhost:9000/covid19/batch/
+hdfs.output.path=hdfs://cloudera-manager:8020/covid19/streaming/
+hdfs.checkpoint.path=hdfs://cloudera-manager:8020/covid19/checkpoints/
+hdfs.batch.path=hdfs://cloudera-manager:8020/covid19/batch/
 ```
 
 ## 🧪 **Testing Guide**
 
-For comprehensive testing instructions, see [TESTING_GUIDE.md](docs/TESTING_GUIDE.md)
-
-### **Quick Testing Commands**
+### **Individual Component Testing**
 ```bash
-# Test individual components
+# Test application components
 mvn exec:java -Dexec.mainClass="com.covid19_tracker.ingestion.Covid19DataIngestionService"
 mvn exec:java -Dexec.mainClass="com.covid19_tracker.spark.Covid19StreamingJob"
 mvn exec:java -Dexec.mainClass="com.covid19_tracker.hive.Covid19HiveService"
 
 # Test complete pipeline
 mvn exec:java -Dexec.mainClass="com.covid19_tracker.Covid19DataTrackerApp"
+```
+
+### **Testing with Docker**
+```bash
+# Test Kafka topic creation
+docker-compose exec cloudera-manager kafka-topics --create \
+    --bootstrap-server localhost:9092 \
+    --replication-factor 1 \
+    --partitions 3 \
+    --topic covid19-data
+
+# Test HDFS
+docker-compose exec cloudera-manager hdfs dfs -ls /
+
+# Test Spark
+docker-compose exec cloudera-manager spark-submit --version
+
+# Test Hive
+docker-compose exec cloudera-manager beeline -u jdbc:hive2://localhost:10000 -e "SHOW DATABASES;"
 ```
 
 ## 📈 Analytics Capabilities
@@ -174,7 +199,7 @@ mvn exec:java -Dexec.mainClass="com.covid19_tracker.Covid19DataTrackerApp"
 - **Daily Trend Analysis**: Time-series analysis
 - **Recovery Rate Analysis**: Patient outcome tracking
 
-### Sample Queries
+### Sample Queries (via Hue)
 
 ```sql
 -- Top 10 countries by confirmed cases
@@ -198,28 +223,33 @@ GROUP BY date
 ORDER BY date DESC;
 ```
 
-## 🔧 Development
+## 🔧 **Troubleshooting**
 
-### Adding New Data Sources
-1. Extend `Covid19DataIngestionService` with new API endpoints
-2. Update data models if needed
-3. Modify Spark streaming logic for new data types
+### Common Issues
 
-### Custom Analytics
-1. Add new methods to `Covid19HiveService`
-2. Create new Hive tables as needed
-3. Update the main application orchestrator
+**1. Cluster Startup Takes Too Long**
+- First startup downloads ~4GB of Cloudera CDH images
+- Ensure stable internet connection
+- Check available disk space (50GB+ recommended)
 
-### Testing
-```bash
-# Run unit tests
-mvn test
+**2. Memory Issues**
+- Ensure 8GB+ RAM available
+- Close other memory-intensive applications
+- Consider increasing Docker memory limits
 
-# Test individual components
-mvn exec:java -Dexec.mainClass="com.covid19_tracker.ingestion.Covid19DataIngestionService"
-mvn exec:java -Dexec.mainClass="com.covid19_tracker.spark.Covid19StreamingJob"
-mvn exec:java -Dexec.mainClass="com.covid19_tracker.hive.Covid19HiveService"
-```
+**3. Port Conflicts**
+- Ensure ports 7180, 8888, 50070, 8080, 9092 are available
+- Stop other services using these ports
+
+**4. Service Not Starting**
+- Check logs: `docker-compose logs cloudera-manager`
+- Wait for Cloudera Manager to fully initialize
+- Use Cloudera Manager web UI to start services manually
+
+### Getting Help
+- Check application logs: `docker-compose logs covid19-tracker`
+- Monitor cluster health via Cloudera Manager
+- Use Hue for data exploration and debugging
 
 ## 📊 Data Sources
 
