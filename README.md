@@ -116,7 +116,6 @@ docker logs -f covid19-tracker
 
 ### 5. **Stop the Cluster**
 ```bash
-cd docker
 docker-compose down
 ```
 

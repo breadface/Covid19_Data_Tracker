@@ -30,7 +30,6 @@ echo "🔨 Building COVID-19 Data Tracker application..."
 
 # Start the cluster
 echo "🐳 Starting Hadoop cluster with Docker Compose..."
-cd docker
 docker-compose up -d
 
 # Wait for services to be ready

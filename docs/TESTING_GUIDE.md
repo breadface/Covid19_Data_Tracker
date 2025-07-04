@@ -263,7 +263,6 @@ docker exec -it kafka kafka-topics --create \
 
 ### **Stop the Cluster**
 ```bash
-cd docker
 docker-compose down
 ```
 

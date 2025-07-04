@@ -147,8 +147,8 @@ services:
   # COVID-19 Data Tracker Application
   covid19-tracker:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      context: .
+      dockerfile: Dockerfile
     hostname: covid19-tracker
     container_name: covid19-tracker
     depends_on:
@@ -164,8 +164,8 @@ services:
       - HIVE_SERVER=hive-server:10000
       - SPARK_MASTER=spark://spark-master:7077
     volumes:
-      - ../target:/app/target
-      - ../logs:/app/logs
+      - ./target:/app/target
+      - ./logs:/app/logs
 
 volumes:
   zookeeper-data:
