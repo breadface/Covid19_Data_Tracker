@@ -2,6 +2,7 @@ package com.covid19_tracker.ingestion;
 
 import com.covid19_tracker.kafka.Covid19DataProducer;
 import com.covid19_tracker.model.Covid19Data;
+import com.covid19_tracker.model.CancerPatientData;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,11 +20,12 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * Service for ingesting COVID-19 data from multiple sources
  */
-public class Covid19DataIngestionService {
+public class Covid19DataIngestionService implements DataIngestionService {
     
     private static final Logger logger = LoggerFactory.getLogger(Covid19DataIngestionService.class);
     
@@ -258,5 +260,37 @@ public class Covid19DataIngestionService {
     public void triggerIngestion() {
         logger.info("Manual ingestion triggered");
         scheduler.submit(this::ingestAllSources);
+    }
+    
+    // DataIngestionService interface implementations
+    
+    @Override
+    public List<Covid19Data> getLatestCovid19Data() {
+        // This method is no longer needed as data comes from Kafka/WebSocket
+        // In a real implementation, this would query the database
+        logger.info("getLatestCovid19Data called - data now comes from real-time pipeline");
+        return new ArrayList<>();
+    }
+    
+    @Override
+    public List<CancerPatientData> getCancerPatientData() {
+        // This method is no longer needed as data comes from Kafka/WebSocket
+        // In a real implementation, this would query the database
+        logger.info("getCancerPatientData called - data now comes from real-time pipeline");
+        return new ArrayList<>();
+    }
+    
+    @Override
+    public List<Covid19Data> getCovid19DataByCountry(String country) {
+        // This method is no longer needed as data comes from Kafka/WebSocket
+        logger.info("getCovid19DataByCountry called for {} - data now comes from real-time pipeline", country);
+        return new ArrayList<>();
+    }
+    
+    @Override
+    public List<Covid19Data> getCovid19DataByDateRange(String startDate, String endDate) {
+        // This method is no longer needed as data comes from Kafka/WebSocket
+        logger.info("getCovid19DataByDateRange called - data now comes from real-time pipeline");
+        return new ArrayList<>();
     }
 } 

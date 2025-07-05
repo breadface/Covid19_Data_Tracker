@@ -42,6 +42,17 @@ public class CancerPatientData {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDate lastUpdated;
     
+    // COVID-19 related fields
+    private String country;
+    private LocalDate covid19PositiveDate;
+    private String covid19Severity;
+    private Boolean hospitalized;
+    private Boolean icuAdmission;
+    private Boolean ventilatorRequired;
+    private String covid19Outcome;
+    private Boolean cancerTreatmentInterrupted;
+    private String vaccinationStatus;
+    
     // Constructors
     public CancerPatientData() {}
     
@@ -97,6 +108,34 @@ public class CancerPatientData {
     
     public LocalDate getLastUpdated() { return lastUpdated; }
     public void setLastUpdated(LocalDate lastUpdated) { this.lastUpdated = lastUpdated; }
+    
+    // COVID-19 related getters and setters
+    public String getCountry() { return country; }
+    public void setCountry(String country) { this.country = country; }
+    
+    public LocalDate getCovid19PositiveDate() { return covid19PositiveDate; }
+    public void setCovid19PositiveDate(LocalDate covid19PositiveDate) { this.covid19PositiveDate = covid19PositiveDate; }
+    
+    public String getCovid19Severity() { return covid19Severity; }
+    public void setCovid19Severity(String covid19Severity) { this.covid19Severity = covid19Severity; }
+    
+    public Boolean getHospitalized() { return hospitalized; }
+    public void setHospitalized(Boolean hospitalized) { this.hospitalized = hospitalized; }
+    
+    public Boolean getIcuAdmission() { return icuAdmission; }
+    public void setIcuAdmission(Boolean icuAdmission) { this.icuAdmission = icuAdmission; }
+    
+    public Boolean getVentilatorRequired() { return ventilatorRequired; }
+    public void setVentilatorRequired(Boolean ventilatorRequired) { this.ventilatorRequired = ventilatorRequired; }
+    
+    public String getCovid19Outcome() { return covid19Outcome; }
+    public void setCovid19Outcome(String covid19Outcome) { this.covid19Outcome = covid19Outcome; }
+    
+    public Boolean getCancerTreatmentInterrupted() { return cancerTreatmentInterrupted; }
+    public void setCancerTreatmentInterrupted(Boolean cancerTreatmentInterrupted) { this.cancerTreatmentInterrupted = cancerTreatmentInterrupted; }
+    
+    public String getVaccinationStatus() { return vaccinationStatus; }
+    public void setVaccinationStatus(String vaccinationStatus) { this.vaccinationStatus = vaccinationStatus; }
     
     @Override
     public String toString() {

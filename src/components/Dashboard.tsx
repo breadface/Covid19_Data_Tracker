@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { 
-  LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  Cell, ScatterChart, Scatter
-} from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { websocketService } from '../services/websocketService';
 import './Dashboard.css';
 
 interface Covid19Data {
@@ -31,7 +27,7 @@ interface CancerPatientData {
   ventilatorRequired?: boolean;
   covid19Outcome?: string;
   cancerTreatmentInterrupted?: boolean;
-  vaccinationStatus?: string;
+  vaccinationStatus: string;
 }
 
 interface MortalityAnalysis {
@@ -43,119 +39,65 @@ interface MortalityAnalysis {
   generalPopulationMortalityRate?: number;
 }
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
-
 const Dashboard: React.FC = () => {
   const [covidData, setCovidData] = useState<Covid19Data[]>([]);
   const [cancerData, setCancerData] = useState<CancerPatientData[]>([]);
   const [mortalityAnalysis, setMortalityAnalysis] = useState<MortalityAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCountry, setSelectedCountry] = useState<string>('All');
-  const [selectedCancerType, setSelectedCancerType] = useState<string>('All');
+  const [selectedCountry, setSelectedCountry] = useState('All');
+  const [selectedCancerType, setSelectedCancerType] = useState('All');
 
   useEffect(() => {
-    fetchData();
+    const setupWebSocket = () => {
+      websocketService.connect();
+      
+      websocketService.onMessage((data) => {
+        try {
+          const parsedData = JSON.parse(data);
+          
+          if (parsedData.type === 'covid19-data') {
+            setCovidData(prevData => {
+              const newData = [...prevData, parsedData.data];
+              // Keep only last 100 records to prevent memory issues
+              return newData.slice(-100);
+            });
+          } else if (parsedData.type === 'cancer-patient-data') {
+            setCancerData(prevData => {
+              const newData = [...prevData, parsedData.data];
+              // Keep only last 100 records to prevent memory issues
+              return newData.slice(-100);
+            });
+          } else if (parsedData.type === 'mortality-analysis') {
+            setMortalityAnalysis(prevData => {
+              const newData = [...prevData, parsedData.data];
+              // Keep only last 50 records to prevent memory issues
+              return newData.slice(-50);
+            });
+          }
+          
+          setLoading(false);
+        } catch (error) {
+          console.error('Error parsing WebSocket data:', error);
+        }
+      });
+
+      websocketService.onError((error) => {
+        console.error('WebSocket error:', error);
+        setLoading(false);
+      });
+
+      websocketService.onClose(() => {
+        console.log('WebSocket connection closed');
+        setLoading(false);
+      });
+    };
+
+    setupWebSocket();
+
+    return () => {
+      websocketService.disconnect();
+    };
   }, []);
-
-  const fetchData = async () => {
-    try {
-      // In a real implementation, these would be API calls to your backend
-      // For now, we'll use mock data
-      const mockCovidData = generateMockCovidData();
-      const mockCancerData = generateMockCancerData();
-      
-      setCovidData(mockCovidData);
-      setCancerData(mockCancerData);
-      setMortalityAnalysis(calculateMortalityAnalysis(mockCovidData, mockCancerData));
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      setLoading(false);
-    }
-  };
-
-  const generateMockCovidData = (): Covid19Data[] => {
-    const countries = ['United States', 'India', 'Brazil', 'United Kingdom', 'France', 'Germany'];
-    const data: Covid19Data[] = [];
-    
-    for (let i = 0; i < 30; i++) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      
-      countries.forEach(country => {
-        data.push({
-          date: date.toISOString().split('T')[0],
-          country,
-          confirmedCases: Math.floor(Math.random() * 1000000) + 10000,
-          deaths: Math.floor(Math.random() * 50000) + 1000,
-          recovered: Math.floor(Math.random() * 800000) + 5000,
-          activeCases: Math.floor(Math.random() * 200000) + 1000,
-          dataSource: 'JHU-CSSE'
-        });
-      });
-    }
-    
-    return data;
-  };
-
-  const generateMockCancerData = (): CancerPatientData[] => {
-    const cancerTypes = ['Lung', 'Breast', 'Colorectal', 'Prostate', 'Leukemia', 'Lymphoma'];
-    const stages = ['I', 'II', 'III', 'IV'];
-    const severities = ['mild', 'moderate', 'severe', 'critical'];
-    const outcomes = ['recovered', 'died', 'ongoing'];
-    const vaccinationStatuses = ['unvaccinated', 'partially', 'fully', 'boosted'];
-    const countries = ['United States', 'India', 'Brazil', 'United Kingdom', 'France', 'Germany'];
-    const data: CancerPatientData[] = [];
-    for (let i = 0; i < 500; i++) {
-      const hasCovid = Math.random() > 0.7;
-      data.push({
-        patientId: `PAT-${String(i + 1).padStart(4, '0')}`,
-        age: Math.floor(Math.random() * 50) + 30,
-        gender: Math.random() > 0.5 ? 'Male' : 'Female',
-        cancerType: cancerTypes[Math.floor(Math.random() * cancerTypes.length)],
-        cancerStage: stages[Math.floor(Math.random() * stages.length)],
-        country: countries[Math.floor(Math.random() * countries.length)],
-        covid19PositiveDate: hasCovid ? new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : undefined,
-        covid19Severity: hasCovid ? severities[Math.floor(Math.random() * severities.length)] : undefined,
-        hospitalized: hasCovid ? Math.random() > 0.6 : undefined,
-        icuAdmission: hasCovid ? Math.random() > 0.8 : undefined,
-        ventilatorRequired: hasCovid ? Math.random() > 0.9 : undefined,
-        covid19Outcome: hasCovid ? outcomes[Math.floor(Math.random() * outcomes.length)] : undefined,
-        cancerTreatmentInterrupted: hasCovid ? Math.random() > 0.4 : undefined,
-        vaccinationStatus: vaccinationStatuses[Math.floor(Math.random() * vaccinationStatuses.length)]
-      });
-    }
-    return data;
-  };
-
-  const calculateMortalityAnalysis = (covidData: Covid19Data[], cancerData: CancerPatientData[]): MortalityAnalysis[] => {
-    const countries = Array.from(new Set(covidData.map(d => d.country)));
-    
-    return countries.map(country => {
-      const countryCovidData = covidData.filter(d => d.country === country);
-      const countryCancerData = cancerData.filter(d => 
-        d.covid19PositiveDate && d.covid19Outcome
-      );
-      
-      const totalCases = countryCovidData.reduce((sum, d) => sum + d.confirmedCases, 0);
-      const totalDeaths = countryCovidData.reduce((sum, d) => sum + d.deaths, 0);
-      const mortalityRate = totalCases > 0 ? (totalDeaths / totalCases) * 100 : 0;
-      
-      const cancerPatientsWithCovid = countryCancerData.length;
-      const cancerPatientDeaths = countryCancerData.filter(d => d.covid19Outcome === 'died').length;
-      const cancerPatientMortalityRate = cancerPatientsWithCovid > 0 ? 
-        (cancerPatientDeaths / cancerPatientsWithCovid) * 100 : 0;
-      
-      return {
-        country,
-        totalCases,
-        totalDeaths,
-        mortalityRate,
-        cancerPatientMortalityRate,
-        generalPopulationMortalityRate: mortalityRate
-      };
-    });
-  };
 
   const filteredCovidData = covidData.filter((d: Covid19Data) => 
     selectedCountry === 'All' || d.country === selectedCountry
@@ -259,104 +201,76 @@ const Dashboard: React.FC = () => {
         </div>
 
         <div className="chart-container">
-          <h3>Mortality Rate Comparison</h3>
+          <h3>Mortality Analysis by Country</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={mortalityAnalysis}>
+            <LineChart data={mortalityAnalysis}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="country" />
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="generalPopulationMortalityRate" fill="#8884d8" name="General Population" />
-              <Bar dataKey="cancerPatientMortalityRate" fill="#ff7300" name="Cancer Patients" />
-            </BarChart>
+              <Line type="monotone" dataKey="mortalityRate" stroke="#82ca9d" name="General Mortality Rate" />
+              <Line type="monotone" dataKey="cancerPatientMortalityRate" stroke="#ffc658" name="Cancer Patient Mortality Rate" />
+            </LineChart>
           </ResponsiveContainer>
         </div>
+      </div>
 
-        <div className="chart-container">
-          <h3>Cancer Types Distribution</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={Object.entries(
-                  filteredCancerData.reduce((acc: Record<string, number>, d: CancerPatientData) => {
-                    acc[d.cancerType] = (acc[d.cancerType] || 0) + 1;
-                    return acc;
-                  }, {} as Record<string, number>)
-                ).map(([type, count]: [string, number]) => ({ name: type, value: count }))}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {Object.entries(
-                  filteredCancerData.reduce((acc: Record<string, number>, d: CancerPatientData) => {
-                    acc[d.cancerType] = (acc[d.cancerType] || 0) + 1;
-                    return acc;
-                  }, {} as Record<string, number>)
-                ).map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+      <div className="data-tables">
+        <div className="table-container">
+          <h3>Latest COVID-19 Data</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Country</th>
+                <th>Confirmed Cases</th>
+                <th>Deaths</th>
+                <th>Recovered</th>
+                <th>Active Cases</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCovidData.slice(-10).map((data, index) => (
+                <tr key={index}>
+                  <td>{data.date}</td>
+                  <td>{data.country}</td>
+                  <td>{data.confirmedCases.toLocaleString()}</td>
+                  <td>{data.deaths.toLocaleString()}</td>
+                  <td>{data.recovered?.toLocaleString() || 'N/A'}</td>
+                  <td>{data.activeCases?.toLocaleString() || 'N/A'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
-        <div className="chart-container">
-          <h3>COVID-19 Severity in Cancer Patients</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={Object.entries(
-              cancerPatientsWithCovid.reduce((acc: Record<string, number>, d: CancerPatientData) => {
-                if (d.covid19Severity) {
-                  acc[d.covid19Severity] = (acc[d.covid19Severity] || 0) + 1;
-                }
-                return acc;
-              }, {} as Record<string, number>)
-            ).map(([severity, count]: [string, number]) => ({ severity, count }))}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="severity" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="count" fill="#82ca9d" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="chart-container">
-          <h3>Age vs COVID-19 Outcome in Cancer Patients</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <ScatterChart data={cancerPatientsWithCovid}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="age" name="Age" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Scatter name="Recovered" dataKey="age" fill="#8884d8" />
-              <Scatter name="Died" dataKey="age" fill="#ff7300" />
-            </ScatterChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="chart-container">
-          <h3>Vaccination Status Impact</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={Object.entries(
-              cancerPatientsWithCovid.reduce((acc: Record<string, number>, d: CancerPatientData) => {
-                acc[d.vaccinationStatus || 'unknown'] = (acc[d.vaccinationStatus || 'unknown'] || 0) + 1;
-                return acc;
-              }, {} as Record<string, number>)
-            ).map(([status, count]: [string, number]) => ({ status, count }))}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="status" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="count" fill="#ffc658" />
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="table-container">
+          <h3>Cancer Patients with COVID-19</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Patient ID</th>
+                <th>Age</th>
+                <th>Cancer Type</th>
+                <th>Country</th>
+                <th>COVID-19 Outcome</th>
+                <th>Vaccination Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cancerPatientsWithCovid.slice(-10).map((data, index) => (
+                <tr key={index}>
+                  <td>{data.patientId}</td>
+                  <td>{data.age}</td>
+                  <td>{data.cancerType}</td>
+                  <td>{data.country}</td>
+                  <td>{data.covid19Outcome || 'N/A'}</td>
+                  <td>{data.vaccinationStatus}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

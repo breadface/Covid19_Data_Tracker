@@ -3,23 +3,24 @@ package com.covid19_tracker.kafka;
 import com.covid19_tracker.model.Covid19Data;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 
 /**
  * Kafka producer for ingesting COVID-19 data into the big data pipeline
  */
 public class Covid19DataProducer {
     
-    private static final Logger logger = LoggerFactory.getLogger(Covid19DataProducer.class);
+    private static final Logger logger = Logger.getLogger(Covid19DataProducer.class.getName());
     private static final String TOPIC_NAME = "covid19-data";
     
     // Use environment variable for Cloudera CDH, fallback to localhost
@@ -31,9 +32,9 @@ public class Covid19DataProducer {
     public Covid19DataProducer() {
         this.producer = createProducer();
         this.objectMapper = new ObjectMapper();
-        objectMapper.findAndRegisterModules(); // Register JavaTimeModule for LocalDate
+        objectMapper.registerModule(new JavaTimeModule()); // Explicitly register JavaTimeModule for LocalDate
         
-        logger.info("Initialized Kafka producer with bootstrap servers: {}", BOOTSTRAP_SERVERS);
+        logger.info("Initialized Kafka producer with bootstrap servers: " + BOOTSTRAP_SERVERS);
     }
     
     private KafkaProducer<String, String> createProducer() {
@@ -62,15 +63,15 @@ public class Covid19DataProducer {
             
             producer.send(record, (metadata, exception) -> {
                 if (exception != null) {
-                    logger.error("Error sending COVID-19 data to Kafka: {}", exception.getMessage());
+                    logger.log(Level.SEVERE, "Error sending COVID-19 data to Kafka: " + exception.getMessage());
                 } else {
-                    logger.info("COVID-19 data sent successfully to topic: {}, partition: {}, offset: {}", 
-                              metadata.topic(), metadata.partition(), metadata.offset());
+                    logger.info("COVID-19 data sent successfully to topic: " + metadata.topic() + 
+                              ", partition: " + metadata.partition() + ", offset: " + metadata.offset());
                 }
             });
             
         } catch (JsonProcessingException e) {
-            logger.error("Error serializing COVID-19 data: {}", e.getMessage());
+            logger.log(Level.SEVERE, "Error serializing COVID-19 data: " + e.getMessage());
         }
     }
     
@@ -85,10 +86,10 @@ public class Covid19DataProducer {
             ProducerRecord<String, String> record = new ProducerRecord<>(TOPIC_NAME, key, jsonData);
             producer.send(record).get();
             
-            logger.info("COVID-19 data sent synchronously: {}", covid19Data);
+            logger.info("COVID-19 data sent synchronously: " + covid19Data);
             
         } catch (JsonProcessingException e) {
-            logger.error("Error serializing COVID-19 data: {}", e.getMessage());
+            logger.log(Level.SEVERE, "Error serializing COVID-19 data: " + e.getMessage());
         }
     }
     
@@ -106,21 +107,5 @@ public class Covid19DataProducer {
         producer.flush();
         producer.close();
         logger.info("COVID-19 data producer closed");
-    }
-    
-    /**
-     * Test method to send sample data
-     */
-    public void sendSampleData() {
-        Covid19Data sampleData = new Covid19Data(
-            LocalDate.now(),
-            "United States",
-            1000000,
-            50000
-        );
-        sampleData.setDataSource("sample-data");
-        sampleData.setLastUpdated(LocalDate.now());
-        
-        sendCovid19Data(sampleData);
     }
 } 

@@ -75,8 +75,10 @@ This will start the following services:
 
 ### 3. Start React Frontend
 ```bash
-cd covid19-visualization
+# Install dependencies
 npm install
+
+# Start the React development server
 npm start
 ```
 
@@ -152,7 +154,6 @@ Data ingestion runs every 6 hours automatically.
 
 ### Frontend Configuration
 - `REACT_APP_API_BASE_URL` - Backend API endpoint (http://localhost:8082)
-- `REACT_APP_ENABLE_MOCK_DATA` - Enable mock data for development
 
 ### Ports
 - **3000** - React Frontend
@@ -172,18 +173,21 @@ Data ingestion runs every 6 hours automatically.
 
 ## 🧪 Testing
 
-### Test Data Ingestion
+### Test Real Data Pipeline
 ```bash
-# Check if data is being ingested
+# Check if real data is being ingested from Our World in Data
 docker-compose logs covid19-tracker | grep "Ingested"
 
 # Test Kafka connectivity
 docker-compose exec kafka kafka-topics --list --bootstrap-server localhost:9092
+
+# Check WebSocket bridge connectivity
+docker-compose logs kafka-websocket-bridge | grep "Connected"
 ```
 
 ### Test Frontend
 ```bash
-cd covid19-visualization
+# Test React app
 npm test
 npm run build
 ```
@@ -221,10 +225,10 @@ SELECT * FROM covid19_data LIMIT 10;
 The system provides real-time and batch analytics:
 
 ### Real-time Analytics
-- Live COVID-19 case tracking
+- Live COVID-19 case tracking from Our World in Data
 - Country-wise mortality rates
 - Daily trend analysis
-- Data source comparison
+- Real-time data streaming via WebSocket
 
 ### Batch Analytics
 - Historical trend analysis
@@ -234,7 +238,7 @@ The system provides real-time and batch analytics:
 
 ### Frontend Analytics
 - Interactive data exploration
-- Real-time chart updates
+- Real-time chart updates via WebSocket
 - Filtered data views
 - Export capabilities
 
@@ -248,19 +252,18 @@ The system provides real-time and batch analytics:
 │   │   ├── kafka/               # Kafka producer/consumer
 │   │   ├── spark/               # Spark streaming jobs
 │   │   ├── hive/                # Hive analytics
+│   │   ├── simple/              # Simple data pipeline
 │   │   └── ingestion/           # Data ingestion services
 │   └── test/                    # Unit tests
-├── covid19-visualization/        # React frontend
-│   ├── src/
-│   │   ├── components/          # React components
-│   │   │   ├── Dashboard.tsx    # Main dashboard
-│   │   │   ├── CustomSVGChart.tsx # D3.js charts
-│   │   │   └── Dashboard.css    # Styling
-│   │   ├── services/            # API services
-│   │   │   └── api.ts           # Backend communication
-│   │   └── App.tsx              # Main app component
-│   ├── package.json             # Frontend dependencies
-│   └── tsconfig.json            # TypeScript config
+├── src/                          # React frontend
+│   ├── components/              # React components
+│   │   ├── Dashboard.tsx        # Main dashboard
+│   │   └── Dashboard.css        # Styling
+│   ├── services/                # API services
+│   │   ├── api.ts               # Backend communication
+│   │   └── websocketService.ts  # WebSocket service
+│   └── App.tsx                  # Main app component
+├── kafka-websocket-bridge.js    # WebSocket bridge service
 ├── docker-compose.yml           # Docker services
 ├── Dockerfile                   # Backend container
 └── README.md                    # This file
@@ -275,18 +278,16 @@ The system provides real-time and batch analytics:
 ./mvnw clean package -DskipTests
 
 # Build frontend
-cd covid19-visualization
 npm install
 npm run build
 ```
 
 ### Development Workflow
 ```bash
-# Start backend services
+# Start all services including data pipeline
 docker-compose up -d
 
 # Start frontend in development mode
-cd covid19-visualization
 npm start
 
 # Run tests
@@ -331,7 +332,6 @@ npm run build
 4. **Frontend TypeScript errors**
    ```bash
    # Install missing dependencies
-   cd covid19-visualization
    npm install @types/react @types/d3
    
    # Clear TypeScript cache
@@ -360,7 +360,7 @@ docker-compose logs datanode
 # Kafka logs
 docker-compose logs kafka
 
-# Frontend logs (in covid19-visualization directory)
+# Frontend logs
 npm start
 
 # All logs
@@ -434,4 +434,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 For issues and questions:
 - Check the troubleshooting section
 - Review the logs
-- Open an issue on GitHub 
+- Open an issue on GitHub

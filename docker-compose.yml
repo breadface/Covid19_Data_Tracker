@@ -163,9 +163,24 @@ services:
       - SPARK_MASTER=spark://spark-master:7077
       - HIVE_SERVER=hive-server:10000
       - CLUSTER_MODE=hadoop
+      - JAVA_OPTS=-Dlog4j2.disable.jmx=true -Dlog4j2.disable.web=true -Dlog4j2.skipJansi=true
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data
+    restart: unless-stopped
+
+  # Kafka WebSocket Bridge
+  kafka-websocket-bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile.bridge
+    container_name: kafka-websocket-bridge
+    depends_on:
+      - kafka
+    ports:
+      - "8083:8083"
+    environment:
+      - KAFKA_BROKERS=kafka:29092
     restart: unless-stopped
 
 volumes:

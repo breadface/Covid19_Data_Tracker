@@ -5,7 +5,7 @@
   <artifactId>Covid19_Data_Tracker</artifactId>
   <name>COVID-19 Data Tracker - Big Data Edition</name>
   <version>2.0.0</version>
-  <description>A comprehensive big data system for tracking COVID-19 morbidity and mortality in cancer patients using Hadoop ecosystem and Kafka</description>
+  <description>Big data system for COVID-19 analytics using Spark, Hive, and Kafka</description>
   <build>
     <plugins>
       <plugin>
@@ -26,65 +26,40 @@
               <goal>shade</goal>
             </goals>
             <configuration>
-              <filters>
-                <filter>
-                  <artifact>*:*</artifact>
-                  <excludes>
-                    <exclude>META-INF/*.SF</exclude>
-                    <exclude>META-INF/*.DSA</exclude>
-                    <exclude>META-INF/*.RSA</exclude>
-                  </excludes>
-                </filter>
-              </filters>
               <transformers>
                 <transformer>
-                  <mainClass>com.covid19_tracker.Covid19DataTrackerApp</mainClass>
+                  <mainClass>com.covid19_tracker.simple.SimpleDataPipelineApp</mainClass>
                 </transformer>
               </transformers>
             </configuration>
           </execution>
         </executions>
       </plugin>
-      <plugin>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>3.1.2</version>
-      </plugin>
     </plugins>
   </build>
   <dependencies>
     <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter</artifactId>
-      <version>5.9.3</version>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.13.2</version>
       <scope>test</scope>
       <exclusions>
         <exclusion>
-          <artifactId>junit-jupiter-api</artifactId>
-          <groupId>org.junit.jupiter</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>junit-jupiter-params</artifactId>
-          <groupId>org.junit.jupiter</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>junit-jupiter-engine</artifactId>
-          <groupId>org.junit.jupiter</groupId>
+          <artifactId>hamcrest-core</artifactId>
+          <groupId>org.hamcrest</groupId>
         </exclusion>
       </exclusions>
     </dependency>
   </dependencies>
   <properties>
-    <jackson.version>2.15.2</jackson.version>
-    <hadoop.version>3.3.6</hadoop.version>
-    <slf4j.version>2.0.7</slf4j.version>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <junit.version>5.9.3</junit.version>
-    <logback.version>1.4.8</logback.version>
+    <scala.binary.version>2.12</scala.binary.version>
     <maven.compiler.source>11</maven.compiler.source>
     <hive.version>3.1.3</hive.version>
+    <jackson.version>2.15.2</jackson.version>
+    <hadoop.version>3.3.6</hadoop.version>
     <kafka.version>3.5.1</kafka.version>
     <maven.compiler.target>11</maven.compiler.target>
     <spark.version>3.4.1</spark.version>
-    <scala.version>2.12</scala.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 </project>

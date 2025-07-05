@@ -28,6 +28,9 @@ COPY src ./src
 RUN ./mvnw clean package -DskipTests \
     && cp target/Covid19_Data_Tracker-2.0.0.jar /app/app.jar
 
+# Simple verification that the JAR was created
+RUN ls -la /app/app.jar && echo "JAR file created successfully"
+
 # Create logs directory
 RUN mkdir -p /app/logs
 
@@ -67,7 +70,7 @@ echo "Spark Master is ready!"\n\
 echo "Core Hadoop ecosystem services are ready!"\n\
 echo "Starting COVID-19 Data Tracker Application..."\n\
 \n\
-java -jar /app/app.jar\n\
+java -Dslf4j.provider=org.slf4j.simple.SimpleServiceProvider -Dlog4j2.disable.jmx=true -Dlog4j2.disable.web=true -Dlog4j2.skipJansi=true -jar /app/app.jar\n\
 ' > /app/start.sh && chmod +x /app/start.sh
 
 # Expose port

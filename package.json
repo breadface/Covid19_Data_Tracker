@@ -1,0 +1,21 @@
+{
+  "name": "covid19-kafka-websocket-bridge",
+  "version": "1.0.0",
+  "description": "Kafka to WebSocket bridge for COVID-19 data streaming",
+  "main": "kafka-websocket-bridge.js",
+  "scripts": {
+    "start": "node kafka-websocket-bridge.js",
+    "dev": "nodemon kafka-websocket-bridge.js"
+  },
+  "dependencies": {
+    "ws": "^8.14.2",
+    "kafkajs": "^2.2.4",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": ["kafka", "websocket", "covid19", "streaming"],
+  "author": "COVID-19 Data Tracker Team",
+  "license": "MIT"
+} 

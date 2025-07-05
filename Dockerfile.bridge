@@ -1,0 +1,19 @@
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy source code
+COPY kafka-websocket-bridge.js ./
+
+# Expose port
+EXPOSE 8083
+
+# Start the application
+CMD ["npm", "start"] 

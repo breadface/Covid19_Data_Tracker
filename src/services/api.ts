@@ -206,61 +206,6 @@ class ApiService {
       return false;
     }
   }
-
-  // Mock data for development (when backend is not available)
-  getMockCovid19Data(): Covid19DataPoint[] {
-    const countries = ['United States', 'India', 'Brazil', 'United Kingdom', 'France', 'Germany'];
-    const data: Covid19DataPoint[] = [];
-    
-    for (let i = 0; i < 30; i++) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      
-      countries.forEach(country => {
-        data.push({
-          date: date.toISOString().split('T')[0],
-          country,
-          confirmedCases: Math.floor(Math.random() * 1000000) + 10000,
-          deaths: Math.floor(Math.random() * 50000) + 1000,
-          recovered: Math.floor(Math.random() * 800000) + 5000,
-          activeCases: Math.floor(Math.random() * 200000) + 1000,
-          dataSource: 'JHU-CSSE'
-        });
-      });
-    }
-    
-    return data;
-  }
-
-  getMockCancerPatientData(): CancerPatientData[] {
-    const cancerTypes = ['Lung', 'Breast', 'Colorectal', 'Prostate', 'Leukemia', 'Lymphoma'];
-    const stages = ['I', 'II', 'III', 'IV'];
-    const severities = ['mild', 'moderate', 'severe', 'critical'];
-    const outcomes = ['recovered', 'died', 'ongoing'];
-    const vaccinationStatuses = ['unvaccinated', 'partially', 'fully', 'boosted'];
-    const countries = ['United States', 'India', 'Brazil', 'United Kingdom', 'France', 'Germany'];
-    const data: CancerPatientData[] = [];
-    for (let i = 0; i < 500; i++) {
-      const hasCovid = Math.random() > 0.7;
-      data.push({
-        patientId: `PAT-${String(i + 1).padStart(4, '0')}`,
-        age: Math.floor(Math.random() * 50) + 30,
-        gender: Math.random() > 0.5 ? 'Male' : 'Female',
-        cancerType: cancerTypes[Math.floor(Math.random() * cancerTypes.length)],
-        cancerStage: stages[Math.floor(Math.random() * stages.length)],
-        country: countries[Math.floor(Math.random() * countries.length)],
-        covid19PositiveDate: hasCovid ? new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : undefined,
-        covid19Severity: hasCovid ? severities[Math.floor(Math.random() * severities.length)] : undefined,
-        hospitalized: hasCovid ? Math.random() > 0.6 : undefined,
-        icuAdmission: hasCovid ? Math.random() > 0.8 : undefined,
-        ventilatorRequired: hasCovid ? Math.random() > 0.9 : undefined,
-        covid19Outcome: hasCovid ? outcomes[Math.floor(Math.random() * outcomes.length)] : undefined,
-        cancerTreatmentInterrupted: hasCovid ? Math.random() > 0.4 : undefined,
-        vaccinationStatus: vaccinationStatuses[Math.floor(Math.random() * vaccinationStatuses.length)]
-      });
-    }
-    return data;
-  }
 }
 
 export default new ApiService(); 
