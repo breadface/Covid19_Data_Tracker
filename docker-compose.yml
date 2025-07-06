@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # HDFS NameNode
   namenode:
@@ -40,150 +38,170 @@ services:
       timeout: 10s
       retries: 3
 
-  # ZooKeeper
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.4.0
-    container_name: zookeeper
-    ports:
-      - "2181:2181"
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-
-  # Kafka
-  kafka:
-    image: confluentinc/cp-kafka:7.4.0
-    container_name: kafka
+  # Hive Metastore
+  hive-metastore:
+    build: ./hive
+    container_name: hive-metastore
+    restart: always
     depends_on:
-      - zookeeper
+      - postgres
     ports:
-      - "9092:9092"
+      - "9083:9083"
+    volumes:
+      - hive_metastore:/opt/hive/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9083"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Hive Metastore Database
+  postgres:
+    image: postgres:13
+    container_name: postgres
+    restart: always
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      - POSTGRES_DB=metastore
+      - POSTGRES_USER=hive
+      - POSTGRES_PASSWORD=hive
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hive -d metastore"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # HiveServer2
+  hive-server:
+    build:
+      context: ./hive
+      dockerfile: Dockerfile.hiveserver2
+    container_name: hive-server
+    restart: always
+    depends_on:
+      - namenode
+      - datanode
+      - hive-metastore
+    ports:
+      - "10000:10000"
+      - "10002:10002"
+    volumes:
+      - hive_server:/opt/hive/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:10002"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Spark Master
   spark-master:
     image: bitnami/spark:3.5.0
     container_name: spark-master
-    ports:
-      - "8080:8080"
-      - "7077:7077"
+    restart: always
     environment:
       - SPARK_MODE=master
       - SPARK_RPC_AUTHENTICATION_ENABLED=no
       - SPARK_RPC_ENCRYPTION_ENABLED=no
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    volumes:
+      - spark_master_data:/opt/bitnami/spark
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Spark Worker
   spark-worker:
     image: bitnami/spark:3.5.0
     container_name: spark-worker
-    depends_on:
-      - spark-master
+    restart: always
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_MEMORY=1G
-      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_CORES=2
       - SPARK_RPC_AUTHENTICATION_ENABLED=no
       - SPARK_RPC_ENCRYPTION_ENABLED=no
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
-
-  # PostgreSQL for Hive Metastore
-  postgres:
-    image: postgres:13
-    container_name: postgres
-    environment:
-      POSTGRES_USER: hive
-      POSTGRES_PASSWORD: hive
-      POSTGRES_DB: metastore
-    ports:
-      - "5432:5432"
+    depends_on:
+      - spark-master
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - spark_worker_data:/opt/bitnami/spark
 
-  # Hive Metastore
-  hive-metastore:
-    image: apache/hive:3.1.3
-    container_name: hive-metastore
-    ports:
-      - "9083:9083"
-    environment:
-      - DB_DRIVER=postgres
-      - DB_HOST=postgres
-      - DB_NAME=metastore
-      - DB_USER_NAME=hive
-      - DB_PASSWORD=hive
+  # Spark Job Service
+  spark-job:
+    build: ./spark-jobs
+    container_name: spark-job
+    restart: "no"
     depends_on:
-      - postgres
-    command: ["/opt/hive/bin/hive", "--service", "metastore"]
-
-  # Hive Server
-  hive-server:
-    image: apache/hive:3.1.3
-    container_name: hive-server
-    ports:
-      - "10000:10000"
-      - "10002:10002"
-    environment:
-      - DB_DRIVER=postgres
-      - DB_HOST=postgres
-      - DB_NAME=metastore
-      - DB_USER_NAME=hive
-      - DB_PASSWORD=hive
-    depends_on:
+      - spark-master
+      - spark-worker
       - hive-metastore
-    command: ["/opt/hive/bin/hive", "--service", "hiveserver2"]
+      - hive-server
+      - namenode
+      - datanode
+    volumes:
+      - spark_job_data:/opt/spark/jobs
+    command: >
+      bash -c "
+        echo 'Spark job service ready. Run manually with: docker exec spark-job /opt/spark/run-covid-job.sh' &&
+        tail -f /dev/null
+      "
 
-  # COVID-19 Data Tracker Application
+  # Spring Boot Application
   covid19-tracker:
     build: .
     container_name: covid19-tracker
+    restart: always
+    ports:
+      - "8081:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - HDFS_NAMENODE=hdfs://namenode:9000
+      - HIVE_JDBC_URL=jdbc:hive2://hive-server:10000/default
+      - SPARK_MASTER_URL=spark://spark-master:7077
     depends_on:
       - namenode
       - datanode
-      - kafka
-      - spark-master
       - hive-server
-    ports:
-      - "8082:8082"
-    environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-      - HDFS_NAMENODE=hdfs://namenode:9000
-      - SPARK_MASTER=spark://spark-master:7077
-      - HIVE_SERVER=hive-server:10000
-      - CLUSTER_MODE=hadoop
-      - JAVA_OPTS=-Dlog4j2.disable.jmx=true -Dlog4j2.disable.web=true -Dlog4j2.skipJansi=true
+      - spark-master
     volumes:
-      - ./logs:/app/logs
       - ./data:/app/data
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Kafka WebSocket Bridge
-  kafka-websocket-bridge:
-    build:
-      context: .
-      dockerfile: Dockerfile.bridge
-    container_name: kafka-websocket-bridge
-    depends_on:
-      - kafka
+  # React Frontend
+  covid19-frontend:
+    build: ./covid19-visualization
+    container_name: covid19-frontend
+    restart: always
     ports:
-      - "8083:8083"
+      - "3000:3000"
     environment:
-      - KAFKA_BROKERS=kafka:29092
-    restart: unless-stopped
+      - REACT_APP_API_URL=http://localhost:8080/api
+    depends_on:
+      - covid19-tracker
 
 volumes:
   hadoop_namenode:
   hadoop_datanode:
-  postgres_data: 
+  hive_metastore:
+  postgres_data:
+  hive_server:
+  spark_master_data:
+  spark_worker_data:
+  spark_job_data:
+
+networks:
+  default:
+    name: covid19-network 

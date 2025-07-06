@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 
 interface Covid19DataPoint {
-  date: string;
+  date: Date;
   cases: number;
   deaths: number;
   country: string;
@@ -20,7 +20,7 @@ const CustomSVGChart: React.FC<CustomSVGChartProps> = ({
   width = 600, 
   height = 400, 
   title 
-}) => {
+}: CustomSVGChartProps) => {
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
@@ -39,35 +39,34 @@ const CustomSVGChart: React.FC<CustomSVGChartProps> = ({
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
     // Parse dates
-    const parseDate = d3.timeParse("%Y-%m-%d");
-    const processedData = data.map(d => ({
+    const processedData = data.map((d: Covid19DataPoint) => ({
       ...d,
-      date: parseDate(d.date)!
+      date: d.date instanceof Date ? d.date : new Date(d.date)
     }));
 
     // Scales
     const xScale = d3.scaleTime()
-      .domain(d3.extent(processedData, d => d.date) as [Date, Date])
+      .domain(d3.extent(processedData, (d: Covid19DataPoint) => d.date) as [Date, Date])
       .range([0, chartWidth]);
 
     const yScale = d3.scaleLinear()
-      .domain([0, d3.max(processedData, d => Math.max(d.cases, d.deaths)) || 0])
+      .domain([0, d3.max(processedData, (d: Covid19DataPoint) => Math.max(d.cases, d.deaths)) || 0])
       .range([chartHeight, 0]);
 
-    // Color scale
-    const colorScale = d3.scaleOrdinal()
+    // Color scale (used for legend)
+    const colorScale = d3.scaleOrdinal<string>()
       .domain(['cases', 'deaths'])
       .range(['#8884d8', '#ff7300']);
 
     // Line generators
-    const lineGenerator = d3.line<typeof processedData[0]>()
-      .x(d => xScale(d.date))
-      .y(d => yScale(d.cases))
+    const lineGenerator = d3.line<Covid19DataPoint>()
+      .x((d: Covid19DataPoint) => xScale(d.date))
+      .y((d: Covid19DataPoint) => yScale(d.cases))
       .curve(d3.curveMonotoneX);
 
-    const deathLineGenerator = d3.line<typeof processedData[0]>()
-      .x(d => xScale(d.date))
-      .y(d => yScale(d.deaths))
+    const deathLineGenerator = d3.line<Covid19DataPoint>()
+      .x((d: Covid19DataPoint) => xScale(d.date))
+      .y((d: Covid19DataPoint) => yScale(d.deaths))
       .curve(d3.curveMonotoneX);
 
     // Add gradient definitions
@@ -78,7 +77,7 @@ const CustomSVGChart: React.FC<CustomSVGChartProps> = ({
       .attr("id", "casesGradient")
       .attr("gradientUnits", "userSpaceOnUse")
       .attr("x1", 0)
-      .attr("y1", yScale(d3.max(processedData, d => d.cases) || 0))
+      .attr("y1", yScale(d3.max(processedData, (d: Covid19DataPoint) => d.cases) ?? 0))
       .attr("x2", 0)
       .attr("y2", yScale(0));
 
@@ -97,7 +96,7 @@ const CustomSVGChart: React.FC<CustomSVGChartProps> = ({
       .attr("id", "deathsGradient")
       .attr("gradientUnits", "userSpaceOnUse")
       .attr("x1", 0)
-      .attr("y1", yScale(d3.max(processedData, d => d.deaths) || 0))
+      .attr("y1", yScale(d3.max(processedData, (d: Covid19DataPoint) => d.deaths) ?? 0))
       .attr("x2", 0)
       .attr("y2", yScale(0));
 
@@ -112,16 +111,16 @@ const CustomSVGChart: React.FC<CustomSVGChartProps> = ({
       .attr("stop-opacity", 0.1);
 
     // Add area paths
-    const areaGenerator = d3.area<typeof processedData[0]>()
-      .x(d => xScale(d.date))
+    const areaGenerator = d3.area<Covid19DataPoint>()
+      .x((d: Covid19DataPoint) => xScale(d.date))
       .y0(chartHeight)
-      .y1(d => yScale(d.cases))
+      .y1((d: Covid19DataPoint) => yScale(d.cases))
       .curve(d3.curveMonotoneX);
 
-    const deathAreaGenerator = d3.area<typeof processedData[0]>()
-      .x(d => xScale(d.date))
+    const deathAreaGenerator = d3.area<Covid19DataPoint>()
+      .x((d: Covid19DataPoint) => xScale(d.date))
       .y0(chartHeight)
-      .y1(d => yScale(d.deaths))
+      .y1((d: Covid19DataPoint) => yScale(d.deaths))
       .curve(d3.curveMonotoneX);
 
     // Add areas
@@ -151,18 +150,18 @@ const CustomSVGChart: React.FC<CustomSVGChartProps> = ({
       .attr("d", deathLineGenerator);
 
     // Add dots for interaction
-    const dots = g.selectAll(".dot")
+    const dots = g.selectAll<SVGCircleElement, Covid19DataPoint>(".dot")
       .data(processedData)
       .enter()
       .append("circle")
       .attr("class", "dot")
-      .attr("cx", d => xScale(d.date))
-      .attr("cy", d => yScale(d.cases))
+      .attr("cx", (d: Covid19DataPoint) => xScale(d.date))
+      .attr("cy", (d: Covid19DataPoint) => yScale(d.cases))
       .attr("r", 4)
       .attr("fill", "#8884d8")
       .attr("opacity", 0)
-      .on("mouseover", function(event, d) {
-        d3.select(this)
+      .on("mouseover", function(this: SVGCircleElement, event: MouseEvent, d: Covid19DataPoint) {
+        d3.select(this as SVGCircleElement)
           .attr("opacity", 1)
           .attr("r", 6);
 
@@ -186,44 +185,40 @@ const CustomSVGChart: React.FC<CustomSVGChartProps> = ({
           .style("left", (event.pageX + 10) + "px")
           .style("top", (event.pageY - 10) + "px");
       })
-      .on("mouseout", function() {
-        d3.select(this)
+      .on("mouseout", function(this: SVGCircleElement) {
+        d3.select(this as SVGCircleElement)
           .attr("opacity", 0)
           .attr("r", 4);
         d3.selectAll(".tooltip").remove();
       });
 
     // Add death dots
-    const deathDots = g.selectAll(".death-dot")
+    const deathDots = g.selectAll<SVGCircleElement, Covid19DataPoint>(".death-dot")
       .data(processedData)
       .enter()
       .append("circle")
       .attr("class", "death-dot")
-      .attr("cx", d => xScale(d.date))
-      .attr("cy", d => yScale(d.deaths))
+      .attr("cx", (d: Covid19DataPoint) => xScale(d.date))
+      .attr("cy", (d: Covid19DataPoint) => yScale(d.deaths))
       .attr("r", 4)
       .attr("fill", "#ff7300")
       .attr("opacity", 0)
-      .on("mouseover", function(event, d) {
-        d3.select(this)
+      .on("mouseover", function(this: SVGCircleElement, event: MouseEvent, d: Covid19DataPoint) {
+        d3.select(this as SVGCircleElement)
           .attr("opacity", 1)
           .attr("r", 6);
       })
-      .on("mouseout", function() {
-        d3.select(this)
+      .on("mouseout", function(this: SVGCircleElement) {
+        d3.select(this as SVGCircleElement)
           .attr("opacity", 0)
           .attr("r", 4);
       });
 
     // Add axes
     const xAxis = d3.axisBottom(xScale)
-      .tickFormat((domainValue: d3.NumberValue | Date, _i: number) =>
-        domainValue instanceof Date ? d3.timeFormat("%b %d")(domainValue) : ''
-      )
       .ticks(8);
 
     const yAxis = d3.axisLeft(yScale)
-      .tickFormat((d: d3.NumberValue) => d3.format(",")(d.valueOf()))
       .ticks(6);
 
     g.append("g")
@@ -303,16 +298,11 @@ const CustomSVGChart: React.FC<CustomSVGChartProps> = ({
   }, [data, width, height, title]);
 
   return (
-    <div style={{ textAlign: 'center' }}>
+    <div className="custom-svg-chart">
       <svg
         ref={svgRef}
         width={width}
         height={height}
-        style={{ 
-          background: 'white', 
-          borderRadius: '8px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-        }}
       />
     </div>
   );

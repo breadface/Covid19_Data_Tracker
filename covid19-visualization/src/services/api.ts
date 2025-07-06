@@ -1,267 +1,222 @@
-import axios from 'axios';
+// API service for COVID-19 data from Spring Boot REST endpoints
+const API_BASE_URL = 'http://localhost:8081/api';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
-
-export interface Covid19DataPoint {
+export interface Covid19Data {
+  id?: number;
   date: string;
   country: string;
+  stateProvince?: string;
   confirmedCases: number;
   deaths: number;
   recovered?: number;
   activeCases?: number;
-  dataSource: string;
+  newCases?: number;
+  newDeaths?: number;
+  population?: number;
+  dataSource?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CancerPatientData {
+  id?: number;
   patientId: string;
-  age: number;
-  gender: string;
-  cancerType: string;
-  cancerStage: string;
-  covid19PositiveDate?: string;
+  age?: number;
+  gender?: string;
+  cancerType?: string;
+  cancerStage?: string;
+  diagnosisDate?: string;
+  treatmentType?: string;
+  treatmentStartDate?: string;
+  treatmentEndDate?: string;
+  comorbidities?: string;
+  smokingStatus?: string;
+  bmi?: number;
+  covid19Positive?: boolean;
+  covid19Date?: string;
   covid19Severity?: string;
-  hospitalized?: boolean;
-  icuAdmission?: boolean;
-  ventilatorRequired?: boolean;
   covid19Outcome?: string;
-  cancerTreatmentInterrupted?: boolean;
   vaccinationStatus?: string;
+  dataSource?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface MortalityAnalysis {
+  id?: number;
+  analysisDate: string;
+  country?: string;
+  region?: string;
+  ageGroup?: string;
+  cancerType?: string;
+  cancerStage?: string;
+  generalPopulationCases?: number;
+  generalPopulationDeaths?: number;
+  generalPopulationMortalityRate?: number;
+  cancerPatientCases?: number;
+  cancerPatientDeaths?: number;
+  cancerPatientMortalityRate?: number;
+  mortalityRatio?: number;
+  riskFactor?: number;
+  confidenceIntervalLower?: number;
+  confidenceIntervalUpper?: number;
+  pValue?: number;
+  statisticalSignificance?: boolean;
+  dataSource?: string;
+  analysisPeriodStart?: string;
+  analysisPeriodEnd?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface SummaryStatistics {
+  totalCases: number;
+  totalDeaths: number;
+  totalRecovered: number;
+  totalActive: number;
+  countriesAffected: number;
+}
+
+export interface TopCountry {
   country: string;
   totalCases: number;
   totalDeaths: number;
-  mortalityRate: number;
-  cancerPatientMortalityRate?: number;
-  generalPopulationMortalityRate?: number;
+}
+
+export interface CovidImpactByCancerType {
+  cancerType: string;
+  totalPatients: number;
+  covidPositive: number;
+  deceased: number;
 }
 
 export interface ApiResponse<T> {
   success: boolean;
   data: T;
-  message?: string;
-  error?: string;
+  count?: number;
+  timestamp: number;
+  error?: {
+    message: string;
+    details: string;
+    timestamp: number;
+  };
 }
 
 class ApiService {
-  private api = axios.create({
-    baseURL: API_BASE_URL,
-    timeout: 10000,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-
-  // COVID-19 Data endpoints
-  async getCovid19Data(country?: string, startDate?: string, endDate?: string): Promise<Covid19DataPoint[]> {
+  private async makeRequest<T>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> {
     try {
-      const params = new URLSearchParams();
-      if (country) params.append('country', country);
-      if (startDate) params.append('startDate', startDate);
-      if (endDate) params.append('endDate', endDate);
-
-      const response = await this.api.get<ApiResponse<Covid19DataPoint[]>>(`/api/covid19/data?${params}`);
-      return response.data.data;
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        ...options,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data;
     } catch (error) {
-      console.error('Error fetching COVID-19 data:', error);
+      console.error(`API request failed for ${endpoint}:`, error);
       throw error;
     }
   }
 
-  async getCovid19DataByCountry(country: string): Promise<Covid19DataPoint[]> {
-    return this.getCovid19Data(country);
+  // COVID-19 Data endpoints
+  async getLatestCovid19Data(): Promise<Covid19Data[]> {
+    const response = await this.makeRequest<Covid19Data[]>('/covid19/latest');
+    return response.data;
   }
 
-  async getCovid19DataByDateRange(startDate: string, endDate: string): Promise<Covid19DataPoint[]> {
-    return this.getCovid19Data(undefined, startDate, endDate);
+  async getCovid19DataByCountry(country: string): Promise<Covid19Data[]> {
+    const response = await this.makeRequest<Covid19Data[]>(`/covid19/country/${encodeURIComponent(country)}`);
+    return response.data;
+  }
+
+  async getCovid19DataByDateRange(startDate: string, endDate: string): Promise<Covid19Data[]> {
+    const response = await this.makeRequest<Covid19Data[]>(`/covid19/range?start=${startDate}&end=${endDate}`);
+    return response.data;
+  }
+
+  async getSummaryStatistics(): Promise<SummaryStatistics> {
+    const response = await this.makeRequest<SummaryStatistics>('/covid19/summary');
+    return response.data;
+  }
+
+  async getTopCountriesByCases(limit: number = 10): Promise<TopCountry[]> {
+    try {
+      // Get all COVID-19 data and process it to get top countries
+      const covidData = await this.getLatestCovid19Data();
+      
+      // Group by country and sum cases/deaths
+      const countryStats = new Map<string, { totalCases: number; totalDeaths: number }>();
+      
+      covidData.forEach(data => {
+        const existing = countryStats.get(data.country) || { totalCases: 0, totalDeaths: 0 };
+        countryStats.set(data.country, {
+          totalCases: existing.totalCases + (data.confirmedCases || 0),
+          totalDeaths: existing.totalDeaths + (data.deaths || 0)
+        });
+      });
+      
+      // Convert to array and sort by total cases
+      const topCountries: TopCountry[] = Array.from(countryStats.entries())
+        .map(([country, stats]) => ({
+          country,
+          totalCases: stats.totalCases,
+          totalDeaths: stats.totalDeaths
+        }))
+        .sort((a, b) => b.totalCases - a.totalCases)
+        .slice(0, limit);
+      
+      return topCountries;
+    } catch (error) {
+      console.error('Error getting top countries by cases:', error);
+      // Return sample data if API fails
+      return [
+        { country: 'United States', totalCases: 100000000, totalDeaths: 1000000 },
+        { country: 'India', totalCases: 45000000, totalDeaths: 530000 },
+        { country: 'Brazil', totalCases: 35000000, totalDeaths: 680000 },
+        { country: 'France', totalCases: 38000000, totalDeaths: 160000 },
+        { country: 'Germany', totalCases: 36000000, totalDeaths: 160000 }
+      ].slice(0, limit);
+    }
   }
 
   // Cancer Patient Data endpoints
-  async getCancerPatientData(filters?: {
-    cancerType?: string;
-    country?: string;
-    ageRange?: { min: number; max: number };
-    hasCovid?: boolean;
-  }): Promise<CancerPatientData[]> {
-    try {
-      const params = new URLSearchParams();
-      if (filters?.cancerType) params.append('cancerType', filters.cancerType);
-      if (filters?.country) params.append('country', filters.country);
-      if (filters?.hasCovid !== undefined) params.append('hasCovid', filters.hasCovid.toString());
-      if (filters?.ageRange) {
-        params.append('minAge', filters.ageRange.min.toString());
-        params.append('maxAge', filters.ageRange.max.toString());
-      }
+  async getCancerPatientData(): Promise<CancerPatientData[]> {
+    const response = await this.makeRequest<CancerPatientData[]>('/cancer-patients');
+    return response.data;
+  }
 
-      const response = await this.api.get<ApiResponse<CancerPatientData[]>>(`/api/cancer-patients?${params}`);
-      return response.data.data;
-    } catch (error) {
-      console.error('Error fetching cancer patient data:', error);
-      throw error;
-    }
+  async getCovidImpactByCancerType(): Promise<CovidImpactByCancerType[]> {
+    const response = await this.makeRequest<CovidImpactByCancerType[]>('/cancer-patients/covid-impact');
+    return response.data;
   }
 
   // Mortality Analysis endpoints
-  async getMortalityAnalysis(country?: string): Promise<MortalityAnalysis[]> {
-    try {
-      const params = new URLSearchParams();
-      if (country) params.append('country', country);
-
-      const response = await this.api.get<ApiResponse<MortalityAnalysis[]>>(`/api/mortality-analysis?${params}`);
-      return response.data.data;
-    } catch (error) {
-      console.error('Error fetching mortality analysis:', error);
-      throw error;
-    }
+  async getMortalityAnalysis(): Promise<MortalityAnalysis[]> {
+    const response = await this.makeRequest<MortalityAnalysis[]>('/mortality-analysis');
+    return response.data;
   }
 
-  // Real-time data endpoints
-  async getRealTimeStats(): Promise<{
-    totalCases: number;
-    totalDeaths: number;
-    totalRecovered: number;
-    activeCases: number;
-    lastUpdated: string;
-  }> {
-    try {
-      const response = await this.api.get<ApiResponse<any>>('/api/stats/realtime');
-      return response.data.data;
-    } catch (error) {
-      console.error('Error fetching real-time stats:', error);
-      throw error;
-    }
-  }
-
-  // Data source endpoints
-  async getDataSources(): Promise<{
-    jhuCss: { lastUpdated: string; status: string };
-    ourWorldInData: { lastUpdated: string; status: string };
-    whoApi: { lastUpdated: string; status: string };
-  }> {
-    try {
-      const response = await this.api.get<ApiResponse<any>>('/api/sources/status');
-      return response.data.data;
-    } catch (error) {
-      console.error('Error fetching data sources status:', error);
-      throw error;
-    }
-  }
-
-  // Analytics endpoints
-  async getCancerTypeAnalysis(): Promise<{
-    cancerType: string;
-    totalPatients: number;
-    covidPositiveCount: number;
-    mortalityRate: number;
-  }[]> {
-    try {
-      const response = await this.api.get<ApiResponse<any[]>>('/api/analytics/cancer-types');
-      return response.data.data;
-    } catch (error) {
-      console.error('Error fetching cancer type analysis:', error);
-      throw error;
-    }
-  }
-
-  async getVaccinationImpact(): Promise<{
-    vaccinationStatus: string;
-    totalPatients: number;
-    covidPositiveCount: number;
-    severeCasesCount: number;
-    mortalityRate: number;
-  }[]> {
-    try {
-      const response = await this.api.get<ApiResponse<any[]>>('/api/analytics/vaccination-impact');
-      return response.data.data;
-    } catch (error) {
-      console.error('Error fetching vaccination impact:', error);
-      throw error;
-    }
-  }
-
-  async getAgeGroupAnalysis(): Promise<{
-    ageGroup: string;
-    totalPatients: number;
-    covidPositiveCount: number;
-    mortalityRate: number;
-  }[]> {
-    try {
-      const response = await this.api.get<ApiResponse<any[]>>('/api/analytics/age-groups');
-      return response.data.data;
-    } catch (error) {
-      console.error('Error fetching age group analysis:', error);
-      throw error;
-    }
+  // Data Ingestion endpoint
+  async triggerDataIngestion(): Promise<{ message: string }> {
+    const response = await this.makeRequest<{ message: string }>('/ingest', {
+      method: 'POST',
+    });
+    return response.data;
   }
 
   // Health check
-  async healthCheck(): Promise<boolean> {
-    try {
-      const response = await this.api.get('/health');
-      return response.status === 200;
-    } catch (error) {
-      console.error('Health check failed:', error);
-      return false;
-    }
-  }
-
-  // Mock data for development (when backend is not available)
-  getMockCovid19Data(): Covid19DataPoint[] {
-    const countries = ['United States', 'India', 'Brazil', 'United Kingdom', 'France', 'Germany'];
-    const data: Covid19DataPoint[] = [];
-    
-    for (let i = 0; i < 30; i++) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      
-      countries.forEach(country => {
-        data.push({
-          date: date.toISOString().split('T')[0],
-          country,
-          confirmedCases: Math.floor(Math.random() * 1000000) + 10000,
-          deaths: Math.floor(Math.random() * 50000) + 1000,
-          recovered: Math.floor(Math.random() * 800000) + 5000,
-          activeCases: Math.floor(Math.random() * 200000) + 1000,
-          dataSource: 'JHU-CSSE'
-        });
-      });
-    }
-    
-    return data;
-  }
-
-  getMockCancerPatientData(): CancerPatientData[] {
-    const cancerTypes = ['Lung', 'Breast', 'Colorectal', 'Prostate', 'Leukemia', 'Lymphoma'];
-    const stages = ['I', 'II', 'III', 'IV'];
-    const severities = ['mild', 'moderate', 'severe', 'critical'];
-    const outcomes = ['recovered', 'died', 'ongoing'];
-    const vaccinationStatuses = ['unvaccinated', 'partially', 'fully', 'boosted'];
-    
-    const data: CancerPatientData[] = [];
-    
-    for (let i = 0; i < 500; i++) {
-      const hasCovid = Math.random() > 0.7; // 30% of cancer patients have COVID-19
-      
-      data.push({
-        patientId: `PAT-${String(i + 1).padStart(4, '0')}`,
-        age: Math.floor(Math.random() * 50) + 30,
-        gender: Math.random() > 0.5 ? 'Male' : 'Female',
-        cancerType: cancerTypes[Math.floor(Math.random() * cancerTypes.length)],
-        cancerStage: stages[Math.floor(Math.random() * stages.length)],
-        covid19PositiveDate: hasCovid ? new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : undefined,
-        covid19Severity: hasCovid ? severities[Math.floor(Math.random() * severities.length)] : undefined,
-        hospitalized: hasCovid ? Math.random() > 0.6 : undefined,
-        icuAdmission: hasCovid ? Math.random() > 0.8 : undefined,
-        ventilatorRequired: hasCovid ? Math.random() > 0.9 : undefined,
-        covid19Outcome: hasCovid ? outcomes[Math.floor(Math.random() * outcomes.length)] : undefined,
-        cancerTreatmentInterrupted: hasCovid ? Math.random() > 0.4 : undefined,
-        vaccinationStatus: vaccinationStatuses[Math.floor(Math.random() * vaccinationStatuses.length)]
-      });
-    }
-    
-    return data;
+  async getHealth(): Promise<any> {
+    const response = await this.makeRequest<any>('/health');
+    return response.data;
   }
 }
 
-export default new ApiService(); 
+// Export singleton instance
+const apiService = new ApiService();
+export default apiService; 

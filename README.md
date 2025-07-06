@@ -1,425 +1,263 @@
-# COVID-19 Data Tracker - Big Data Edition
+# COVID-19 Data Tracker
 
-A comprehensive big data solution for tracking COVID-19 morbidity and mortality in cancer patients using the **Hadoop ecosystem** with a modern **React visualization frontend**.
+A comprehensive COVID-19 data processing pipeline that analyzes COVID-19 data from multiple sources. This project implements a batch processing architecture using Spring Boot, Apache Spark, HDFS, and Hive for data processing and analysis.
 
 ## 🏗️ Architecture Overview
 
-This project implements a complete big data pipeline using individual **Hadoop ecosystem components** with a rich web-based visualization interface:
-
-### Backend (Big Data Pipeline)
-- **Apache Kafka** - Real-time data streaming and message queuing
-- **Apache Spark Streaming** - Real-time data processing and analytics
-- **Apache Hive** - Data warehousing and batch analytics
-- **HDFS (Hadoop Distributed File System)** - Distributed file storage
-- **PostgreSQL** - Metadata storage for Hive metastore
-- **ZooKeeper** - Distributed coordination service
-- **Java** - Core application development
-
-### Frontend (Visualization Dashboard)
-- **React 18** - Modern UI framework
-- **TypeScript** - Type-safe development
-- **D3.js** - Custom interactive charts
-- **Recharts** - React chart library
-- **Axios** - HTTP client for API communication
-
-## 📊 Data Flow
-
 ```
-External APIs (JHU CSSE, WHO, Our World in Data) 
-    ↓
-Kafka Producer (Data Ingestion)
-    ↓
-Kafka Topic (covid19-data)
-    ↓
-Spark Streaming (Real-time Processing)
-    ↓
-HDFS Storage
-    ↓
-Hive Analytics (Batch Processing)
-    ↓
-REST API
-    ↓
-React Frontend (Interactive Dashboard)
+Data Sources → Data Ingestion → HDFS (Raw) → Spark Processing → Hive → API → React Frontend
+     ↓              ↓              ↓              ↓              ↓        ↓         ↓
+   Our World    Spring Boot    HDFS Storage   Apache Spark   Apache    REST API   React UI
+   in Data      Ingestion      (Data Lake)    (ETL Jobs)     Hive      (JSON)     (Charts)
 ```
+
+### Key Components
+
+- **Data Sources**: Our World in Data COVID-19 dataset
+- **Data Ingestion**: Spring Boot service for downloading and storing data in HDFS
+- **Data Processing**: Apache Spark jobs for ETL processing
+- **Data Storage**: HDFS for raw data storage
+- **Data Warehouse**: Apache Hive for analytical queries
+- **API Layer**: Spring Boot REST API
+- **Frontend**: React with TypeScript and Recharts
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 - Docker and Docker Compose
-- Java 11+
-- Node.js 18+ (for React frontend)
-- Maven (or use the included Maven wrapper)
-- **Note**: This setup is optimized for Apple Silicon (M1/M2) Macs but works on all platforms
+- Java 17+
+- Node.js 18+ (for local development)
 
-### 1. Build the Backend Application
-```bash
-./mvnw clean package -DskipTests
-```
+### Running with Docker Compose
 
-### 2. Start Hadoop Ecosystem
-```bash
-docker-compose up -d
-```
-
-This will start the following services:
-- **HDFS NameNode** - Distributed file system management
-- **HDFS DataNode** - Distributed file storage
-- **Kafka** - Real-time streaming platform
-- **ZooKeeper** - Distributed coordination
-- **Spark Master** - Spark cluster management
-- **Spark Worker** - Spark processing nodes
-- **PostgreSQL** - Hive metastore database
-- **Hive Metastore** - Metadata management
-- **Hive Server** - SQL query interface
-- **COVID-19 Tracker** - Main application
-
-### 3. Start React Frontend
-```bash
-# Install dependencies
-npm install
-
-# Start the React development server
-npm start
-```
-
-The React app will be available at: http://localhost:3000
-
-### 4. Monitor the Services
-```bash
-# Check service status
-docker-compose ps
-
-# View application logs
-docker-compose logs covid19-tracker
-
-# Monitor real-time logs
-docker-compose logs -f covid19-tracker
-
-# Check HDFS status
-docker-compose logs namenode
-```
-
-### 5. Access Web Interfaces
-- **React Dashboard**: http://localhost:3000
-- **HDFS NameNode Web UI**: http://localhost:9870
-- **Spark Master**: http://localhost:8080
-- **Hive Server**: http://localhost:10002 (HiveServer2 Web UI)
-
-## 🎨 Frontend Features
-
-### Interactive Dashboard
-- **Real-time COVID-19 Data Visualization**
-  - Line charts showing cases and deaths over time
-  - Country-wise filtering and comparison
-  - Interactive tooltips with detailed information
-  - Responsive design for all screen sizes
-
-- **Cancer Patient Analytics**
-  - Mortality rate analysis for cancer patients with COVID-19
-  - Cancer type distribution charts
-  - Age and gender demographics
-  - Treatment interruption analysis
-
-- **Custom D3.js Charts**
-  - Interactive SVG-based visualizations
-  - Smooth animations and transitions
-  - Zoom and pan capabilities
-  - Export functionality
-
-### Chart Types
-- **Line Charts** - COVID-19 trends over time
-- **Bar Charts** - Country-wise comparisons
-- **Pie Charts** - Distribution analysis
-- **Area Charts** - Cumulative data visualization
-- **Custom D3 Charts** - Advanced interactive visualizations
-
-## 📈 Data Sources
-
-The application automatically ingests COVID-19 data from:
-
-1. **JHU CSSE GitHub Repository** - Daily COVID-19 reports
-2. **Our World in Data** - Comprehensive global COVID-19 dataset
-3. **WHO API** - Official World Health Organization data
-
-Data ingestion runs every 6 hours automatically.
-
-## 🔧 Configuration
-
-### Backend Environment Variables
-- `KAFKA_BOOTSTRAP_SERVERS` - Kafka cluster endpoints (kafka:29092)
-- `HDFS_NAMENODE` - HDFS NameNode address (hdfs://namenode:9000)
-- `SPARK_MASTER` - Spark master URL (spark://spark-master:7077)
-- `HIVE_SERVER` - Hive server address (hive-server:10000)
-- `CLUSTER_MODE` - Set to "hadoop" for Hadoop ecosystem
-
-### Frontend Configuration
-- `REACT_APP_API_BASE_URL` - Backend API endpoint (http://localhost:8082)
-
-### Ports
-- **3000** - React Frontend
-- **9870** - HDFS NameNode Web UI
-- **9000** - HDFS NameNode RPC
-- **9864** - HDFS DataNode Web UI
-- **9092** - Kafka (external)
-- **29092** - Kafka (internal)
-- **2181** - ZooKeeper
-- **10000** - Hive Server
-- **10002** - HiveServer2 Web UI
-- **9083** - Hive Metastore
-- **7077** - Spark Master
-- **8080** - Spark Master Web UI
-- **5432** - PostgreSQL
-- **8082** - COVID-19 Tracker Application
-
-## 🧪 Testing
-
-### Test Real Data Pipeline
-```bash
-# Check if real data is being ingested from Our World in Data
-docker-compose logs covid19-tracker | grep "Ingested"
-
-# Test Kafka connectivity
-docker-compose exec kafka kafka-topics --list --bootstrap-server localhost:9092
-
-# Check WebSocket bridge connectivity
-docker-compose logs kafka-websocket-bridge | grep "Connected"
-```
-
-### Test Frontend
-```bash
-# Test React app
-npm test
-npm run build
-```
-
-### Test Spark Processing
-```bash
-# Check Spark application status
-curl http://localhost:8080
-
-# View Spark application logs
-docker-compose logs covid19-tracker | grep "Spark"
-```
-
-### Test HDFS
-```bash
-# Check HDFS status
-docker-compose exec namenode hdfs dfsadmin -report
-
-# List HDFS files
-docker-compose exec namenode hdfs dfs -ls /
-```
-
-### Test Hive Analytics
-```bash
-# Connect to Hive
-docker-compose exec hive-server beeline -u jdbc:hive2://localhost:10000
-
-# Run sample queries
-SHOW TABLES;
-SELECT * FROM covid19_data LIMIT 10;
-```
-
-## 📊 Analytics
-
-The system provides real-time and batch analytics:
-
-### Real-time Analytics
-- Live COVID-19 case tracking from Our World in Data
-- Country-wise mortality rates
-- Daily trend analysis
-- Real-time data streaming via WebSocket
-
-### Batch Analytics
-- Historical trend analysis
-- Top affected countries
-- Mortality rate analysis
-- Data quality metrics
-
-### Frontend Analytics
-- Interactive data exploration
-- Real-time chart updates via WebSocket
-- Filtered data views
-- Export capabilities
-
-## 🛠️ Development
-
-### Project Structure
-```
-├── src/                          # Backend Java source
-│   ├── main/java/com/covid19_tracker/
-│   │   ├── model/               # Data models
-│   │   ├── kafka/               # Kafka producer/consumer
-│   │   ├── spark/               # Spark streaming jobs
-│   │   ├── hive/                # Hive analytics
-│   │   ├── simple/              # Simple data pipeline
-│   │   └── ingestion/           # Data ingestion services
-│   └── test/                    # Unit tests
-├── src/                          # React frontend
-│   ├── components/              # React components
-│   │   ├── Dashboard.tsx        # Main dashboard
-│   │   └── Dashboard.css        # Styling
-│   ├── services/                # API services
-│   │   ├── api.ts               # Backend communication
-│   │   └── websocketService.ts  # WebSocket service
-│   └── App.tsx                  # Main app component
-├── kafka-websocket-bridge.js    # WebSocket bridge service
-├── docker-compose.yml           # Docker services
-├── Dockerfile                   # Backend container
-└── README.md                    # This file
-```
-
-### Building
-```bash
-# Build backend with tests
-./mvnw clean package
-
-# Build backend without tests
-./mvnw clean package -DskipTests
-
-# Build frontend
-npm install
-npm run build
-```
-
-### Development Workflow
-```bash
-# Start all services including data pipeline
-docker-compose up -d
-
-# Start frontend in development mode
-npm start
-
-# Run tests
-npm test
-
-# Build for production
-npm run build
-```
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-1. **HDFS services not starting**
+1. **Clone the repository:**
    ```bash
-   # Check HDFS logs
-   docker-compose logs namenode
-   docker-compose logs datanode
-   
-   # Restart HDFS services
-   docker-compose restart namenode datanode
+   git clone <repository-url>
+   cd Covid19_Data_Tracker
    ```
 
-2. **Application not connecting to HDFS**
+2. **Start all services:**
    ```bash
-   # Check HDFS status
-   docker-compose exec namenode hdfs dfsadmin -report
-   
-   # Check network connectivity
-   docker-compose exec covid19-tracker nc -zv namenode 9000
+   docker-compose up -d
    ```
 
-3. **Application not connecting to Kafka**
+3. **Run the Spark job to process data:**
    ```bash
-   # Check Kafka status
-   docker-compose exec kafka kafka-topics --list --bootstrap-server localhost:9092
-   
-   # Check network connectivity
-   docker-compose exec covid19-tracker nc -zv kafka 29092
+   docker exec spark-job /opt/spark/run-covid-job.sh
    ```
 
-4. **Frontend TypeScript errors**
+4. **Access the applications:**
+   - **Frontend**: http://localhost:3000
+   - **Backend API**: http://localhost:8081/api
+   - **HDFS NameNode**: http://localhost:9870
+   - **Hive Server**: http://localhost:10000
+   - **Spark Master**: http://localhost:8080
+
+### Local Development
+
+1. **Start the backend:**
    ```bash
-   # Install missing dependencies
-   npm install @types/react @types/d3
-   
-   # Clear TypeScript cache
-   rm -rf node_modules/.cache
+   mvn spring-boot:run
+   ```
+
+2. **Start the frontend:**
+   ```bash
+   cd covid19-visualization
+   npm install
    npm start
    ```
 
-5. **Platform-specific issues (Apple Silicon)**
+## 📊 Features
+
+### Data Processing
+- **Batch Data Ingestion**: Automated data collection from Our World in Data
+- **ETL Pipeline**: Apache Spark jobs for data transformation and cleaning
+- **Data Quality**: Validation and error handling for data integrity
+- **Schema Enforcement**: Consistent data schema across all countries
+
+### Analytics
+- **COVID-19 Metrics**: Cases, deaths, recoveries, and trends
+- **Country-wise Analysis**: Data analysis by country
+- **Time Series Analysis**: Trend visualization over time
+- **Statistical Analysis**: Summary statistics and data insights
+
+### Visualization
+- **Interactive Dashboards**: Real-time charts and graphs
+- **Time Series Analysis**: Trend visualization over time
+- **Geographic Data**: Country and regional comparisons
+- **Comparative Analysis**: Side-by-side comparisons of different metrics
+
+## 🔧 Configuration
+
+### Application Properties
+The application configuration is in `src/main/resources/application.yml`:
+
+```yaml
+# Data Sources
+data-sources:
+  our-world-in-data:
+    url: https://covid.ourworldindata.org/data/owid-covid-data.json
+
+# HDFS Configuration
+hdfs:
+  namenode: hdfs://namenode:9000
+  base-path: /covid19-data
+
+# Hive Configuration
+hive:
+  jdbc-url: jdbc:hive2://hive-server:10000/default
+```
+
+### Environment Variables
+- `SPRING_PROFILES_ACTIVE`: Active Spring profile (dev, prod, docker)
+- `HDFS_NAMENODE`: HDFS NameNode URL
+- `HIVE_JDBC_URL`: Hive JDBC connection URL
+
+## 📈 API Endpoints
+
+### COVID-19 Data
+- `GET /api/covid19/latest` - Latest COVID-19 data
+- `GET /api/covid19/country/{country}` - Data by country
+- `GET /api/covid19/range?start={date}&end={date}` - Data by date range
+- `GET /api/covid19/summary` - Summary statistics
+
+### System
+- `GET /api/health` - Health check
+- `POST /api/ingest` - Trigger data ingestion
+
+## 🗄️ Data Models
+
+### COVID-19 Data
+```java
+public class Covid19Data {
+    private LocalDate date;
+    private String country;
+    private Integer totalCases;
+    private Integer totalDeaths;
+    private Integer newCases;
+    private Integer newDeaths;
+    private Double totalCasesPerMillion;
+    private Double totalDeathsPerMillion;
+    private String dataSource;
+}
+```
+
+## 🔄 Data Processing
+
+### Spark Job
+- **COVID-19 Data Processing**: Processes Our World in Data JSON and creates Hive tables
+- **Schema Enforcement**: Ensures consistent data structure across all countries
+- **Data Validation**: Validates and cleans incoming data
+
+### Job Execution
+```bash
+# Run the Spark job manually
+docker exec spark-job /opt/spark/run-covid-job.sh
+
+# Check job status
+docker logs spark-job
+```
+
+## 🧪 Testing
+
+### Unit Tests
+```bash
+mvn test
+```
+
+### Integration Tests
+```bash
+mvn verify
+```
+
+### API Tests
+```bash
+# Test health endpoint
+curl http://localhost:8081/api/health
+
+# Test data endpoints
+curl http://localhost:8081/api/covid19/latest
+curl http://localhost:8081/api/covid19/summary
+```
+
+## 📝 Development
+
+### Project Structure
+```
+src/
+├── main/
+│   ├── java/com/covid19_tracker/
+│   │   ├── config/          # Configuration classes
+│   │   ├── model/           # Data models
+│   │   ├── repository/      # Data access layer
+│   │   ├── service/         # Business logic
+│   │   ├── batch/           # Spring Batch jobs
+│   │   ├── ingestion/       # Data ingestion services
+│   │   ├── hive/            # Hive data service
+│   │   └── api/             # REST controllers
+│   └── resources/
+│       └── application.yml  # Application configuration
+└── test/                    # Test classes
+
+spark-jobs/
+├── src/main/java/
+│   └── com/covid19_tracker/spark/
+│       └── Covid19DataProcessor.java  # Spark ETL job
+└── Dockerfile
+
+covid19-visualization/
+├── src/
+│   ├── components/          # React components
+│   └── services/            # API services
+└── package.json
+```
+
+### Adding New Data Sources
+1. Update `DataSourcesConfig.java`
+2. Add ingestion method in `DataIngestionService.java`
+3. Update Spark job in `Covid19DataProcessor.java`
+4. Update API endpoints in `RestApiController.java`
+
+## 🚀 Deployment
+
+### Production Deployment
+1. **Build the application:**
    ```bash
-   # HDFS images are emulated on Apple Silicon and may be slower
-   # If you experience issues, consider:
-   # - Increasing memory allocation in Docker Desktop
-   # - Using a VM for HDFS services
-   # - Using S3-compatible storage instead of HDFS
+   mvn clean package -DskipTests
    ```
 
-### Logs
-```bash
-# Application logs
-docker-compose logs covid19-tracker
+2. **Deploy with Docker:**
+   ```bash
+   docker-compose up -d
+   ```
 
-# HDFS logs
-docker-compose logs namenode
-docker-compose logs datanode
+3. **Run data processing:**
+   ```bash
+   docker exec spark-job /opt/spark/run-covid-job.sh
+   ```
 
-# Kafka logs
-docker-compose logs kafka
+4. **Monitor the application:**
+   ```bash
+   docker-compose logs -f covid19-tracker
+   ```
 
-# Frontend logs
-npm start
-
-# All logs
-docker-compose logs
-```
+## 📊 Monitoring and Logging
 
 ### Health Checks
-```bash
-# Check all service health
-docker-compose ps
+- Application health: `/api/health`
+- HDFS health: HDFS NameNode web UI
+- Hive health: Hive Server web UI
+- Spark health: Spark Master web UI
 
-# Check specific service health
-docker-compose exec namenode curl -f http://localhost:9870
-docker-compose exec datanode curl -f http://localhost:9864
+### Logging
+- Application logs: Spring Boot logging
+- Spark job logs: Docker logs
+- Container logs: Docker logs
 
-# Check frontend
-curl -f http://localhost:3000
-```
-
-## 🐳 Docker Services
-
-### Core Services
-- **namenode** - HDFS NameNode (bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8)
-- **datanode** - HDFS DataNode (bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8)
-- **kafka** - Apache Kafka (confluentinc/cp-kafka:7.4.0)
-- **zookeeper** - Apache ZooKeeper (confluentinc/cp-zookeeper:7.4.0)
-- **spark-master** - Spark Master (bitnami/spark:3.5.0)
-- **spark-worker** - Spark Worker (bitnami/spark:3.5.0)
-- **postgres** - PostgreSQL (postgres:13)
-- **hive-metastore** - Hive Metastore (apache/hive:3.1.3)
-- **hive-server** - Hive Server (apache/hive:3.1.3)
-- **covid19-tracker** - Main application (custom build)
-
-### Volumes
-- **hadoop_namenode** - HDFS NameNode data
-- **hadoop_datanode** - HDFS DataNode data
-- **postgres_data** - PostgreSQL data
-
-## 🆕 Recent Updates
-
-### TypeScript & D3.js Fixes
-- Fixed D3 tickFormat type errors with proper function signatures
-- Added explicit type annotations for D3 NumberValue and Date types
-- Fixed .call(xAxis) errors with 'as any' type casting
-- Added missing 'country' property to CancerPatientData interface
-- Fixed percent undefined error in Pie chart labels
-- Updated tsconfig.json for proper TypeScript configuration
-- Installed missing type definitions for React and D3
-
-### React Frontend
-- Complete interactive dashboard with multiple chart types
-- Custom D3.js visualizations with interactive features
-- Real-time data filtering and comparison
-- Responsive design for all screen sizes
-- TypeScript for type-safe development
-
-## 📝 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+### Metrics
+- Spring Boot Actuator metrics
+- Custom business metrics
+- Performance monitoring
 
 ## 🤝 Contributing
 
@@ -429,9 +267,12 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 4. Add tests
 5. Submit a pull request
 
-## 📞 Support
+## 📄 License
 
-For issues and questions:
-- Check the troubleshooting section
-- Review the logs
-- Open an issue on GitHub
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- Data sources: Our World in Data
+- Technologies: Spring Boot, Apache Spark, Apache Hadoop, Apache Hive, React
+- Community: Open source contributors and researchers

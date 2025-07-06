@@ -1,0 +1,103 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: covid19-data-tracker
+  
+  # Database configuration for batch metadata
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  
+  # JPA configuration
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  
+  # Batch configuration
+  batch:
+    job:
+      enabled: false  # Disable auto-start of jobs
+    jdbc:
+      initialize-schema: always
+  
+  # H2 Console (for development)
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+# HDFS Configuration
+hdfs:
+  namenode: hdfs://namenode:9000
+  base-path: /covid19-data
+  raw-data-path: /covid19-data/raw
+  processed-data-path: /covid19-data/processed
+  archive-path: /covid19-data/archive
+
+# Hive Configuration
+hive:
+  jdbc-url: jdbc:hive2://hive-server:10000/default
+  username: 
+  password: 
+  driver-class-name: org.apache.hive.jdbc.HiveDriver
+
+# Data Sources Configuration
+data-sources:
+  our-world-in-data:
+    url: https://covid-19.nyc3.digitaloceanspaces.com/public/owid-covid-data.json
+    update-frequency: daily
+#  cdc:
+#    url: https://data.cdc.gov/api/views/9mfq-cb36/rows.csv
+#    update-frequency: daily
+#  johns-hopkins:
+#    base-url: https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/
+#    update-frequency: daily
+
+# Batch Job Configuration
+batch:
+  job:
+    covid19-ingestion:
+      cron: "0 0 2 * * *"  # Daily at 2 AM
+    cancer-data-processing:
+      cron: "0 0 4 * * *"  # Daily at 4 AM
+    mortality-analysis:
+      cron: "0 0 6 * * *"  # Daily at 6 AM
+
+# Logging Configuration
+logging:
+  level:
+    com.covid19_tracker: INFO
+    org.springframework.batch: INFO
+    org.apache.hadoop: WARN
+    org.apache.hive: WARN
+    org.apache.tomcat: WARN
+    org.apache.juli: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,batch
+  endpoint:
+    health:
+      show-details: when-authorized
+
+# Spark Configuration
+spark:
+  master:
+    url: spark://spark-master:7077
+  job:
+    covid19-processing:
+      jar-path: /opt/spark-jobs/covid19-data-processor.jar
+      main-class: com.covid19_tracker.spark.Covid19DataProcessor 

@@ -1,40 +1,50 @@
 package com.covid19_tracker.ingestion;
 
-import com.covid19_tracker.model.Covid19Data;
-import com.covid19_tracker.model.CancerPatientData;
+import org.apache.hadoop.fs.FileSystem;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Service interface for data ingestion operations
- * Provides methods for retrieving COVID-19 and cancer patient data
+ * Service for ingesting COVID-19 data from external sources to HDFS
  */
-public interface DataIngestionService {
+@Service
+public class DataIngestionService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(DataIngestionService.class);
+    
+    @Autowired
+    private FileSystem fileSystem;
+    
+    @Autowired
+    private List<CovidDataSource> dataSources;
+    
+    private final String rawDataPath = "/covid19-data/raw";
     
     /**
-     * Get the latest COVID-19 data
-     * @return List of COVID-19 data points
+     * Ingest all data sources
      */
-    List<Covid19Data> getLatestCovid19Data();
-    
-    /**
-     * Get cancer patient data
-     * @return List of cancer patient data
-     */
-    List<CancerPatientData> getCancerPatientData();
-    
-    /**
-     * Get COVID-19 data for a specific country
-     * @param country The country name
-     * @return List of COVID-19 data points for the country
-     */
-    List<Covid19Data> getCovid19DataByCountry(String country);
-    
-    /**
-     * Get COVID-19 data for a date range
-     * @param startDate Start date in ISO format (YYYY-MM-DD)
-     * @param endDate End date in ISO format (YYYY-MM-DD)
-     * @return List of COVID-19 data points for the date range
-     */
-    List<Covid19Data> getCovid19DataByDateRange(String startDate, String endDate);
+    public void ingestAllData() {
+        logger.info("Starting data ingestion for all sources");
+        boolean anySuccess = false;
+        for (CovidDataSource source : dataSources) {
+            try {
+                boolean success = source.ingest(fileSystem, rawDataPath, LocalDate.now());
+                if (success) {
+                    anySuccess = true;
+                }
+            } catch (Exception e) {
+                logger.error("{} ingestion failed", source.getName(), e);
+            }
+        }
+        if (anySuccess) {
+            logger.info("Data ingestion completed with some success");
+        } else {
+            logger.error("All data ingestion attempts failed");
+        }
+    }
 } 
